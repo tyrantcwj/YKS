@@ -28,8 +28,8 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker was not found on PATH. Install Docker Desktop or Docker Engine first."
 }
 
-Write-Host "Building and starting pokemon-price-watch..."
-docker compose up --build -d
+Write-Host "Starting pokemon-price-watch..."
+docker compose up -d
 
 try {
     $healthUrl = "http://127.0.0.1:8000/healthz"

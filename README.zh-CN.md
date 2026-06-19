@@ -15,7 +15,6 @@
 - 站内提醒列表
 - 可选 webhook 通知
 - 可选 HTTP Basic Auth
-- 默认只绑定本机 `127.0.0.1:8000`
 - 导出订阅 CSV
 - 导出价格历史 CSV
 - 下载 SQLite 数据库备份
@@ -25,8 +24,8 @@
 
 ## 文件说明
 
-- `docker-compose.yml`: 本地 Docker 编排文件
-- `Dockerfile`: 应用镜像构建文件
+- `docker-compose.yml`: NAS / 本地 Docker 免构建编排文件
+- `Dockerfile`: 本地手动构建镜像时使用
 - `.env.example`: 配置示例
 - `app/`: FastAPI 应用
 - `scripts/smoke-docker.ps1`: Docker 部署自检脚本
@@ -35,16 +34,19 @@
 
 ## 完整 Docker 编排文件
 
-如果你想直接复制编排代码，可以使用下面这一份。保存为 `docker-compose.yml`：
+下面这份是给群晖、威联通、1Panel、CasaOS、Docker Compose 项目等图形界面用的免构建版本。它不使用 `build: .`，所以不会要求面板上传源码构建上下文。
+
+保存为 `docker-compose.yml`，或者直接粘贴到容器管理器的项目编排里：
 
 ```yaml
 services:
   pokemon-price-watch:
-    build: .
+    image: python:3.12-slim
     container_name: pokemon-price-watch
     restart: unless-stopped
+    working_dir: /app/source
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8000:8000"
     environment:
       APP_NAME: "Pokemon Price Watch"
       DATABASE_PATH: "/data/app.db"
@@ -60,6 +62,20 @@ services:
       YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
     volumes:
       - pokemon-price-data:/data
+      - pokemon-price-code:/app/source
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        apt-get update
+        apt-get install -y --no-install-recommends git ca-certificates
+        rm -rf /var/lib/apt/lists/*
+        if [ ! -f pyproject.toml ]; then
+          git clone --depth 1 --branch "${YKS_UPDATE_BRANCH:-main}" "https://github.com/${YKS_UPDATE_REPO:-tyrantcwj/YKS}.git" .
+        fi
+        python -m pip install --no-cache-dir .
+        exec /bin/sh docker/yks-entrypoint.sh
     healthcheck:
       test:
         [
@@ -71,38 +87,38 @@ services:
       interval: 1m
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 1m
 
 volumes:
   pokemon-price-data:
+  pokemon-price-code:
 ```
 
-这份编排默认只允许本机访问：
+这份编排第一次启动时会：
+
+- 拉取 `python:3.12-slim`
+- 安装 `git` 和证书
+- 从 `https://github.com/tyrantcwj/YKS.git` 克隆代码到 `pokemon-price-code` volume
+- 安装 Python 依赖
+- 启动网站
+
+第一次启动会比普通镜像慢一点，后面重启会复用已经克隆好的代码 volume。
+
+如果只想允许本机访问，可以把端口改成：
 
 ```yaml
 ports:
   - "127.0.0.1:8000:8000"
 ```
 
-如果你以后要让局域网其他设备访问，可以改成：
-
-```yaml
-ports:
-  - "8000:8000"
-```
+如果你在 NAS 上部署，通常保持默认的 `8000:8000` 更方便在局域网访问。
 
 ## 部署到本地 Docker
-
-先复制配置：
-
-```powershell
-Copy-Item .env.example .env
-```
 
 启动：
 
 ```powershell
-docker compose up --build -d
+docker compose up -d
 ```
 
 打开：
@@ -124,6 +140,17 @@ docker compose logs -f
 docker compose down
 ```
 
+如果你的 Docker 面板不支持 `${AUTH_USERNAME:-admin}` 这种默认值写法，就把环境变量改成固定值，例如：
+
+```yaml
+AUTH_USERNAME: "admin"
+AUTH_PASSWORD: ""
+YKS_UPDATE_MODE: "auto"
+YKS_UPDATE_REPO: "tyrantcwj/YKS"
+YKS_UPDATE_BRANCH: "main"
+YKS_GITHUB_MIRROR_PREFIX: ""
+```
+
 ## 一键验收 Docker 部署
 
 安装 Docker 后，在项目目录运行：
@@ -134,7 +161,7 @@ docker compose down
 
 脚本会执行：
 
-- `docker compose up --build -d`
+- `docker compose up -d`
 - 等待 `/healthz` 返回正常
 - 检查首页是否能打开
 - 如果设置了 `AUTH_PASSWORD`，检查未登录返回 401，正确账号密码返回 200
@@ -169,7 +196,7 @@ YKS_GITHUB_MIRROR_PREFIX=
 
 默认 `AUTH_PASSWORD` 为空，不启用登录保护。
 
-要启用登录，在 `.env` 中设置：
+要启用登录，在 compose 环境变量里设置：
 
 ```text
 AUTH_USERNAME=admin

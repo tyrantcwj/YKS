@@ -14,8 +14,7 @@ It includes:
 ## Local Run
 
 ```powershell
-Copy-Item .env.example .env
-docker compose up --build
+docker compose up -d
 ```
 
 Open:
