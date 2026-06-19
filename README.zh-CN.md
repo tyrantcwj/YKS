@@ -151,12 +151,13 @@ volumes:
 这份编排第一次启动时会：
 
 - 拉取 `python:3.12-slim`
-- 安装 `git` 和证书
-- 从 `https://github.com/tyrantcwj/YKS.git` 克隆代码到 `pokemon-price-code` volume
+- 用 Python 标准库从 GitHub 下载源码压缩包到 `pokemon-price-code` volume
 - 安装 Python 依赖
 - 启动网站
 
 第一次启动会比普通镜像慢一点，后面重启会复用已经克隆好的代码 volume。
+
+如果日志里还出现 `apt-get` 或 `git clone`，说明项目仍在使用旧编排。需要删除旧项目/容器后，用本节最新编排重新创建。
 
 如果只想允许本机访问，可以把端口改成：
 

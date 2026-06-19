@@ -28,7 +28,11 @@ from app.tcgdex import search_cards
 from app.updater import apply_update, read_build_info, update_status
 
 scheduler = BackgroundScheduler()
-templates = Jinja2Templates(directory="app/templates")
+APP_DIR = Path(__file__).resolve().parent
+STATIC_DIR = APP_DIR / "static"
+TEMPLATES_DIR = APP_DIR / "templates"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def parse_optional_float(value: str | None) -> float | None:
@@ -73,7 +77,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def _unauthorized() -> Response:
