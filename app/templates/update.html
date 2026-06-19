@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="update-panel">
+  <div class="chart-head">
+    <h1>Online Update</h1>
+    {% if status %}
+    <span>{{ status.runtime.mode }} / {{ "supported" if status.runtime.supported else "disabled" }}</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <p class="alert-text">{{ error }}</p>
+  {% endif %}
+
+  {% if message %}
+  <p class="success-text">{{ message }}</p>
+  {% endif %}
+
+  {% if status %}
+  <div class="update-lines">
+    <div><span>Repository</span><strong>{{ status.updateRepo }}</strong></div>
+    <div><span>Branch</span><strong>{{ status.updateBranch }}</strong></div>
+    <div><span>Current</span><strong>{{ status.current.commit[:7] if status.current.commit else "unknown" }}</strong></div>
+    <div><span>Latest</span><strong>{{ status.latest.commit[:7] if status.latest else "unknown" }}</strong></div>
+    <div><span>Status</span><strong>{{ "Update available" if status.updateAvailable else "Up to date or unknown" }}</strong></div>
+  </div>
+  <p class="chart-empty">{{ status.runtime.detail }}</p>
+  <form action="/update/apply" method="post" class="update-actions">
+    <button class="primary-button" type="submit" {% if not status.runtime.supported %}disabled{% endif %}>Update Now</button>
+    <a href="/update">Check Again</a>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

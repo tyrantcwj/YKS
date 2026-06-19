@@ -158,3 +158,25 @@ def test_subscription_detail_renders_price_chart(tmp_path, monkeypatch):
     assert "Price Trend" in response.text
     assert "<polyline" in response.text
     assert "2 points" in response.text
+
+
+def test_update_page_renders_status(monkeypatch):
+    async def fake_update_status():
+        return {
+            "current": {"version": "source", "commit": "abc123", "builtAt": ""},
+            "latest": {"commit": "def456", "message": "new", "date": ""},
+            "updateAvailable": True,
+            "runtime": {"mode": "source", "supported": True, "detail": "Downloads source."},
+            "updateRepo": "tyrantcwj/YKS",
+            "updateBranch": "main",
+        }
+
+    monkeypatch.setattr(main, "update_status", fake_update_status)
+
+    with TestClient(main.app) as client:
+        response = client.get("/update")
+
+    assert response.status_code == 200
+    assert "Online Update" in response.text
+    assert "Update available" in response.text
+    assert "Update Now" in response.text

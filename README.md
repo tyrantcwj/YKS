@@ -7,6 +7,7 @@ It includes:
 - a lightweight FastAPI web interface
 - local SQLite persistence
 - Docker Compose deployment
+- in-place source update helper
 - CSV and database export helpers
 - optional Basic Auth for local-only use
 

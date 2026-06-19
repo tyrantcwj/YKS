@@ -21,6 +21,7 @@
 - 下载 SQLite 数据库备份
 - Docker healthcheck
 - Docker smoke test 脚本
+- 在线源码更新：不需要重新构建或更新容器，也能直接把容器内代码更新到 GitHub main 分支
 
 ## 文件说明
 
@@ -29,6 +30,7 @@
 - `.env.example`: 配置示例
 - `app/`: FastAPI 应用
 - `scripts/smoke-docker.ps1`: Docker 部署自检脚本
+- `docker/yks-entrypoint.sh`: 容器内循环启动脚本，用于在线更新后自动重启服务
 - `tests/`: 单元和路由测试
 
 ## 部署到本地 Docker
@@ -120,8 +122,66 @@ environment:
   AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
   ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
   ALERT_WEBHOOK_TIMEOUT_SECONDS: "${ALERT_WEBHOOK_TIMEOUT_SECONDS:-10}"
+  YKS_UPDATE_MODE: "${YKS_UPDATE_MODE:-auto}"
+  YKS_UPDATE_REPO: "${YKS_UPDATE_REPO:-tyrantcwj/YKS}"
+  YKS_UPDATE_BRANCH: "${YKS_UPDATE_BRANCH:-main}"
+  YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
 volumes:
   - pokemon-price-data:/data
+```
+
+## 在线更新代码
+
+这个功能按 `iTyc-Rss` 的源码更新模式做：不需要重新构建镜像，也不需要 `docker compose pull` 或重建容器。
+
+容器启动时运行的是：
+
+```text
+docker/yks-entrypoint.sh
+```
+
+它会循环启动 FastAPI 服务。当网页里触发在线更新时，应用会：
+
+1. 检查 `YKS_UPDATE_REPO` 的 `YKS_UPDATE_BRANCH`
+2. 下载 GitHub main 分支源码压缩包
+3. 在容器内覆盖 `app/`、`scripts/`、`pyproject.toml`、README、Docker 编排等文件
+4. 执行 `python -m pip install --no-cache-dir .`
+5. 写入 `app-version.json`
+6. 退出当前服务进程
+7. `docker/yks-entrypoint.sh` 自动重新拉起服务
+
+网页入口：
+
+```text
+http://localhost:8000/update
+```
+
+也可以直接访问 API：
+
+```text
+GET  /api/admin/update/status
+POST /api/admin/update/apply
+```
+
+配置项：
+
+```text
+YKS_UPDATE_MODE=auto
+YKS_UPDATE_REPO=tyrantcwj/YKS
+YKS_UPDATE_BRANCH=main
+YKS_GITHUB_MIRROR_PREFIX=
+```
+
+如果要禁用在线更新：
+
+```text
+YKS_UPDATE_MODE=disabled
+```
+
+如果 GitHub 直连慢，可以设置镜像前缀，例如：
+
+```text
+YKS_GITHUB_MIRROR_PREFIX=https://ghfast.top/
 ```
 
 ### 登录保护

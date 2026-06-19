@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     auth_password: str = ""
     alert_webhook_url: str = ""
     alert_webhook_timeout_seconds: float = 10.0
+    yks_update_mode: str = "auto"
+    yks_update_repo: str = "tyrantcwj/YKS"
+    yks_update_branch: str = "main"
+    yks_update_timeout_seconds: float = 120.0
+    yks_github_mirror_prefix: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

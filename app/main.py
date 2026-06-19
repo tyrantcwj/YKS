@@ -25,6 +25,7 @@ from app.pricing import (
     sync_subscription,
 )
 from app.tcgdex import search_cards
+from app.updater import apply_update, read_build_info, update_status
 
 scheduler = BackgroundScheduler()
 templates = Jinja2Templates(directory="app/templates")
@@ -128,6 +129,69 @@ async def dashboard(request: Request, q: str = ""):
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
+
+
+@app.get("/api/version")
+async def api_version():
+    info = read_build_info()
+    return {
+        "version": info.version,
+        "commit": info.commit,
+        "builtAt": info.built_at,
+    }
+
+
+@app.get("/api/admin/update/status")
+async def api_update_status():
+    return await update_status()
+
+
+@app.post("/api/admin/update/apply")
+async def api_update_apply():
+    return await apply_update()
+
+
+@app.get("/update", response_class=HTMLResponse)
+async def update_page(request: Request):
+    try:
+        status = await update_status()
+        error = ""
+    except Exception as exc:
+        status = None
+        error = str(exc)
+    return templates.TemplateResponse(
+        request,
+        "update.html",
+        {
+            "settings": settings,
+            "status": status,
+            "error": error,
+            "message": "",
+        },
+    )
+
+
+@app.post("/update/apply", response_class=HTMLResponse)
+async def update_apply_page(request: Request):
+    try:
+        result = await apply_update()
+        status = await update_status()
+        error = ""
+        message = result.get("detail", "Update started.")
+    except Exception as exc:
+        status = None
+        error = str(exc)
+        message = ""
+    return templates.TemplateResponse(
+        request,
+        "update.html",
+        {
+            "settings": settings,
+            "status": status,
+            "error": error,
+            "message": message,
+        },
+    )
 
 
 @app.get("/export/subscriptions.csv")

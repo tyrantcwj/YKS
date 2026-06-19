@@ -14,6 +14,10 @@ services:
       AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
       ALERT_WEBHOOK_TIMEOUT_SECONDS: "${ALERT_WEBHOOK_TIMEOUT_SECONDS:-10}"
+      YKS_UPDATE_MODE: "${YKS_UPDATE_MODE:-auto}"
+      YKS_UPDATE_REPO: "${YKS_UPDATE_REPO:-tyrantcwj/YKS}"
+      YKS_UPDATE_BRANCH: "${YKS_UPDATE_BRANCH:-main}"
+      YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
     volumes:
       - pokemon-price-data:/data
     healthcheck:

@@ -24,3 +24,6 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

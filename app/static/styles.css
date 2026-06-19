@@ -384,6 +384,60 @@ button,
   padding: 16px;
 }
 
+.update-panel {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.update-panel h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.update-lines {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin: 16px 0;
+}
+
+.update-lines div {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.update-lines span {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.update-lines strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.update-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.alert-text {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.success-text {
+  color: var(--green);
+  font-weight: 700;
+}
+
 .chart-head {
   align-items: baseline;
   display: flex;
