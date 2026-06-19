@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="detail-head">
+  <a href="/">Back</a>
+  <div>
+    <h1>{{ subscription.nickname or subscription.card_id }}</h1>
+    <p>{{ subscription.card_id }} / {{ subscription.variant }}</p>
+  </div>
+  <form action="/subscriptions/{{ subscription.id }}/sync" method="post">
+    <button class="primary-button">Sync</button>
+  </form>
+</section>
+
+<section class="chart-panel">
+  <div class="chart-head">
+    <h2>Price Trend</h2>
+    {% if chart %}
+    <span>{{ chart.count }} points / {{ chart.currency }} {{ "%.2f"|format(chart.min_price) }}-{{ "%.2f"|format(chart.max_price) }}</span>
+    {% endif %}
+  </div>
+  {% if chart %}
+  <svg class="price-chart" viewBox="0 0 720 220" role="img" aria-label="Price trend chart">
+    <line x1="24" y1="196" x2="696" y2="196"></line>
+    <line x1="24" y1="24" x2="24" y2="196"></line>
+    <polyline points="{{ chart.points }}"></polyline>
+  </svg>
+  <div class="chart-labels">
+    <span>{{ chart.first_label }}</span>
+    <span>{{ chart.last_label }}</span>
+  </div>
+  {% else %}
+  <p class="chart-empty">No price points for this variant yet.</p>
+  {% endif %}
+</section>
+
+<section class="history">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Provider</th>
+        <th>Variant</th>
+        <th>Price</th>
+        <th>Low</th>
+        <th>Mid</th>
+        <th>High</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in history %}
+      {% set price = display_price(row) %}
+      <tr>
+        <td>{{ row.snapshot_at }}</td>
+        <td>{{ row.provider }}</td>
+        <td>{{ row.variant }}</td>
+        <td>{% if price is not none %}{{ row.currency }} {{ "%.2f"|format(price) }}{% endif %}</td>
+        <td>{{ row.low_price or "" }}</td>
+        <td>{{ row.mid_price or "" }}</td>
+        <td>{{ row.high_price or "" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No history yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

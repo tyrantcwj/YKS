@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toolbar-band">
+  <form class="search-form" action="/" method="get">
+    <label>
+      <span>Search Cards</span>
+      <input name="q" value="{{ query }}" placeholder="pikachu, charizard, furret">
+    </label>
+    <button class="primary-button" type="submit">Search</button>
+  </form>
+
+  {% if query %}
+  <div class="search-results">
+    {% for result in search_results %}
+    <article class="search-result">
+      <div class="search-thumb">
+        {% if result.image_url %}
+        <img src="{{ result.image_url }}" alt="{{ result.name }}">
+        {% else %}
+        <span>{{ result.local_id or result.card_id }}</span>
+        {% endif %}
+      </div>
+      <div>
+        <strong>{{ result.name }}</strong>
+        <span>{{ result.card_id }}</span>
+      </div>
+      <form action="/subscriptions" method="post">
+        <input type="hidden" name="card_id" value="{{ result.card_id }}">
+        <input type="hidden" name="nickname" value="{{ result.name }}">
+        <input type="hidden" name="variant" value="normal">
+        <button type="submit">Add</button>
+      </form>
+    </article>
+    {% else %}
+    <p class="search-empty">No cards found for "{{ query }}".</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form class="subscribe-form" action="/subscriptions" method="post">
+    <label>
+      <span>Card ID</span>
+      <input name="card_id" placeholder="swsh3-136" required>
+    </label>
+    <label>
+      <span>Name</span>
+      <input name="nickname" placeholder="Personal label">
+    </label>
+    <label>
+      <span>Variant</span>
+      <select name="variant">
+        <option value="holo">Holo</option>
+        <option value="normal">Normal</option>
+        <option value="reverse">Reverse</option>
+        <option value="standard">Standard</option>
+      </select>
+    </label>
+    <label>
+      <span>Target</span>
+      <input name="target_price" type="number" min="0" step="0.01" placeholder="USD/EUR">
+    </label>
+    <label>
+      <span>Move %</span>
+      <input name="alert_percent" type="number" min="0" step="0.1" placeholder="10">
+    </label>
+    <button class="primary-button" type="submit">Add</button>
+  </form>
+</section>
+
+{% if alerts %}
+<section class="alerts">
+  {% for alert in alerts %}
+  <div class="alert">
+    <strong>{{ alert.title }}</strong>
+    <span>{{ alert.message }}</span>
+    <time>{{ alert.created_at }}</time>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="grid">
+  {% for item in subscriptions %}
+  {% set price = display_price(item) %}
+  <article class="card {% if not item.active %}muted{% endif %}">
+    <a class="image-link" href="/subscriptions/{{ item.id }}">
+      {% if item.image_url %}
+      <img src="{{ item.image_url }}" alt="{{ item.name or item.card_id }}">
+      {% else %}
+      <span class="empty-art">{{ item.card_id }}</span>
+      {% endif %}
+    </a>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <h2>{{ item.nickname or item.name or item.card_id }}</h2>
+          <p>{{ item.set_name or "Unknown set" }} · {{ item.rarity or item.variant }}</p>
+        </div>
+        <span class="status">{{ "On" if item.active else "Off" }}</span>
+      </div>
+      <div class="price-row">
+        <span class="price">
+          {% if price is not none %}{{ item.currency }} {{ "%.2f"|format(price) }}{% else %}No price{% endif %}
+        </span>
+        <span>{{ item.provider or "pending" }} · {{ item.variant }}</span>
+      </div>
+      <form class="edit-form" action="/subscriptions/{{ item.id }}/edit" method="post">
+        <input name="nickname" value="{{ item.nickname }}" placeholder="Name">
+        <select name="variant">
+          {% for option in ["holo", "normal", "reverse", "standard"] %}
+          <option value="{{ option }}" {% if item.variant == option %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+        <input name="target_price" type="number" step="0.01" value="{{ item.target_price or '' }}" placeholder="Target">
+        <input name="alert_percent" type="number" step="0.1" value="{{ item.alert_percent or '' }}" placeholder="Move %">
+        <label class="toggle"><input name="active" type="checkbox" {% if item.active %}checked{% endif %}><span>Active</span></label>
+        <button title="Save" aria-label="Save">✓</button>
+      </form>
+      <div class="actions">
+        <a href="/subscriptions/{{ item.id }}">History</a>
+        <form action="/subscriptions/{{ item.id }}/sync" method="post"><button>Sync</button></form>
+        <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">Delete</button></form>
+      </div>
+      <p class="meta">Last synced {{ item.last_synced_at or "never" }}</p>
+    </div>
+  </article>
+  {% else %}
+  <div class="empty-state">
+    <h1>No subscriptions yet</h1>
+    <p>Add a TCGdex card ID to begin tracking prices.</p>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

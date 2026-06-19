@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ settings.app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark"></span>
+        <span>{{ settings.app_name }}</span>
+      </a>
+      <nav class="top-actions">
+        <a href="/export/database.sqlite">Database Backup</a>
+        <a href="/export/subscriptions.csv">Subscriptions CSV</a>
+        <a href="/export/prices.csv">Prices CSV</a>
+        <form action="/sync" method="post">
+          <button title="Sync all" aria-label="Sync all">Sync</button>
+        </form>
+      </nav>
+    </header>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
