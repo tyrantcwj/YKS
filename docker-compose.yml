@@ -27,13 +27,16 @@ services:
       - -lc
       - |
         set -eu
+        mkdir -p /app/source /data
+        cd /app/source
         apt-get update
         apt-get install -y --no-install-recommends git ca-certificates
         rm -rf /var/lib/apt/lists/*
         if [ ! -f pyproject.toml ]; then
+          find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           git clone --depth 1 --branch "${YKS_UPDATE_BRANCH:-main}" "https://github.com/${YKS_UPDATE_REPO:-tyrantcwj/YKS}.git" .
         fi
-        python -m pip install --no-cache-dir .
+        python -m pip install --no-cache-dir -e .
         exec /bin/sh docker/yks-entrypoint.sh
     healthcheck:
       test:

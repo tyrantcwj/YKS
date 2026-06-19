@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-cd /app
+APP_ROOT="${YKS_APP_ROOT:-$(pwd)}"
+cd "$APP_ROOT"
 
 child_pid=""
 stopping=0
