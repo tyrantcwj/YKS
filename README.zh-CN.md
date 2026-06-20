@@ -85,17 +85,52 @@ volumes:
 docker compose pull && docker compose up -d
 ```
 
-## 部署方式二：本地源码构建（不想用 GHCR 时）
+## 部署方式二：爱快 / 群晖等面板的编排（命名卷被禁用时）
 
-如果你不想用 GHCR（例如网络拉不到 ghcr.io），可以用源码本地构建。依赖在构建时打进镜像，启动同样是秒开、容器名是 `yks`：
+有些面板（如爱快 4.0）**禁止使用命名卷（named volume）**，只允许主机路径挂载，而且挂载路径必须落在项目目录内。这时把 `image` 仍然指向 GHCR 镜像，只改 `volumes` 用**相对路径**即可。
 
-```bash
-git clone https://github.com/tyrantcwj/YKS.git
-cd YKS
-docker compose -f docker-compose.build.yml up -d --build
+### 爱快 4.0 编排代码
+
+先在爱快里建好项目目录（例如 `/data/Docker/yks`），然后用下面这份编排（注意 `volumes` 用相对路径 `./data`，并且**没有**顶级 `volumes:` 声明）：
+
+```yaml
+services:
+  yks:
+    image: ghcr.io/tyrantcwj/yks:latest
+    container_name: yks
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: "宝可梦卡价格订阅"
+      DATABASE_PATH: "/data/app.db"
+      TCGDEX_LOCALE: "en"
+      TCGDEX_API_BASE: "https://api.tcgdex.net/v2"
+      AUTH_USERNAME: "admin"
+      AUTH_PASSWORD: ""
+      YKS_UPDATE_MODE: "auto"
+      YKS_UPDATE_REPO: "tyrantcwj/YKS"
+      YKS_UPDATE_BRANCH: "main"
+    volumes:
+      - ./data:/data
 ```
 
-只有第一次 `--build` 会花一两分钟装依赖，之后秒开。
+要点：
+
+- `volumes` 左边用相对路径 `./data`（会落到项目目录里，例如 `/data/Docker/yks/data`）；右边必须保持 `/data`，因为 `DATABASE_PATH=/data/app.db`。
+- 全文不要出现命名卷 `yks-data`，也不要再有顶级 `volumes:` 块，否则会报 `NAMED_VOLUME_FORBIDDEN`。
+- 用绝对路径（如 `/iKuai/...`）会报 `OUTSIDE_BASE_DIR`，所以这里用相对路径。
+
+### 群晖（Container Manager）
+
+群晖支持命名卷，可直接用方式一那份。若想改成主机路径挂载，把 `volumes` 换成共享文件夹下的路径即可：
+
+```yaml
+    volumes:
+      - /volume1/docker/yks/data:/data
+```
+
+> 如果你不想用 GHCR、想本地源码构建，仓库里还有 `docker-compose.build.yml`，执行 `docker compose -f docker-compose.build.yml up -d --build` 即可。
 
 ## 部署方式三：免构建 bootstrap（最后的备选）
 
