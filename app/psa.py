@@ -56,7 +56,12 @@ def _as_int(value: Any) -> int | None:
 
 
 def parse_cert(cert_number: str, body: Any) -> PsaCert | None:
-    if not isinstance(body, dict) or not body.get("IsValidRequest"):
+    # The public API returns ``{"PSACert": {...}}`` for a valid cert. Older docs
+    # mention an ``IsValidRequest`` flag, but live responses omit it, so we only
+    # require the ``PSACert`` object itself.
+    if not isinstance(body, dict):
+        return None
+    if body.get("IsValidRequest") is False:
         return None
     cert = body.get("PSACert")
     if not isinstance(cert, dict):

@@ -5,13 +5,14 @@ from app.db import init_db
 from app.psa import parse_cert
 
 
+# Matches the live PSA Public API shape: a bare ``PSACert`` object with no
+# ``IsValidRequest`` flag (the field older docs mention but the API omits).
 SAMPLE_BODY = {
-    "IsValidRequest": True,
-    "ServerMessage": "Request successful",
     "PSACert": {
         "CertNumber": "12345678",
-        "SpecID": "12168745",
-        "CardGrade": "10",
+        "SpecID": 12168745,
+        "CardGrade": "GEM MT 10",
+        "GradeDescription": "GEM MT 10",
         "Subject": "Charizard",
         "Year": "1999",
         "Brand": "Pokemon Game",
@@ -26,7 +27,7 @@ SAMPLE_BODY = {
 def test_parse_cert_extracts_fields():
     cert = parse_cert("12345678", SAMPLE_BODY)
     assert cert is not None
-    assert cert.grade == "10"
+    assert cert.grade == "GEM MT 10"
     assert cert.subject == "Charizard"
     assert cert.year == "1999"
     assert cert.population_total == 8849
@@ -36,7 +37,7 @@ def test_parse_cert_extracts_fields():
 
 def test_parse_cert_rejects_invalid_request():
     assert parse_cert("0", {"IsValidRequest": False, "ServerMessage": "Invalid CertNo"}) is None
-    assert parse_cert("0", {"IsValidRequest": True}) is None
+    assert parse_cert("0", {"ServerMessage": "Invalid CertNo"}) is None
     assert parse_cert("0", "not a dict") is None
 
 
@@ -61,7 +62,7 @@ def test_save_and_get_psa_cert(tmp_path, monkeypatch):
         conn.commit()
 
         stored = repository.get_psa_cert(conn, subscription_id)
-        assert stored["grade"] == "10"
+        assert stored["grade"] == "GEM MT 10"
         assert stored["population_total"] == 8849
         assert stored["subject"] == "Charizard"
 
@@ -76,7 +77,7 @@ def test_save_and_get_psa_cert(tmp_path, monkeypatch):
 
         # The dashboard join surfaces the grade as a badge.
         rows = repository.list_subscriptions(conn)
-        assert rows[0]["psa_grade"] == "10"
+        assert rows[0]["psa_grade"] == "GEM MT 10"
 
         repository.delete_psa_cert(conn, subscription_id)
         conn.commit()

@@ -214,7 +214,7 @@
 <section class="panel">
   <div class="section-head">
     <div><p class="eyebrow">评级 & 中国行情</p><h2>PSA 鉴定 & 集换社</h2></div>
-    {% if not settings.psa_api_token %}<span>未配置 PSA_API_TOKEN</span>{% endif %}
+    {% if not psa_token_configured %}<span>未配置 PSA_API_TOKEN（去「设置」页填写）</span>{% endif %}
   </div>
 
   {% if psa_cert %}
