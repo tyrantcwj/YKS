@@ -71,6 +71,24 @@ SEARCH_LOCALE_OPTIONS = [
     ("zh-cn", "简中"),
 ]
 
+SORT_OPTIONS = [
+    ("updated_desc", "最近更新"),
+    ("price_desc", "最新价格：高→低"),
+    ("price_asc", "最新价格：低→高"),
+    ("name_asc", "卡名：A→Z"),
+    ("rarity_asc", "稀有度：低→高"),
+    ("rarity_desc", "稀有度：高→低"),
+]
+
+POPULAR_QUERIES = [
+    "皮卡丘",
+    "喷火龙",
+    "ミュウ",
+    "リザードン",
+    "Pikachu",
+    "Charizard",
+]
+
 
 def variant_label(value: str | None) -> str:
     if not value:
@@ -107,6 +125,33 @@ def parse_optional_float(value: str | None) -> float | None:
     if value is None or value.strip() == "":
         return None
     return float(value)
+
+
+def _row_price(row) -> float | None:
+    return display_price(row)
+
+
+def _sort_rows(rows, sort: str):
+    if sort == "price_desc":
+        return sorted(rows, key=lambda row: (_row_price(row) is not None, _row_price(row) or 0), reverse=True)
+    if sort == "price_asc":
+        return sorted(rows, key=lambda row: (_row_price(row) is None, _row_price(row) or 0))
+    if sort == "name_asc":
+        return sorted(rows, key=lambda row: (row["nickname"] or row["name"] or row["card_id"]).lower())
+    if sort == "rarity_asc":
+        return sorted(rows, key=lambda row: (row["rarity"] or ""))
+    if sort == "rarity_desc":
+        return sorted(rows, key=lambda row: (row["rarity"] or ""), reverse=True)
+    return rows
+
+
+def _unique_options(rows, key: str) -> list[str]:
+    values = {
+        str(row[key]).strip()
+        for row in rows
+        if row[key] is not None and str(row[key]).strip()
+    }
+    return sorted(values)
 
 
 def flash_redirect(path: str) -> RedirectResponse:
@@ -179,20 +224,47 @@ async def require_basic_auth(request: Request, call_next):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, q: str = ""):
+async def dashboard(
+    request: Request,
+    q: str = "",
+    sort: str = "updated_desc",
+    rarity: str = "",
+    series: str = "",
+    show_name: str = "1",
+    show_price: str = "1",
+):
     search_results = await search_cards(q) if q.strip() else []
     with get_db() as db:
-        subscriptions = repository.list_subscriptions(db)
+        all_subscriptions = repository.list_subscriptions(db)
         alerts = repository.list_alerts(db)
+    rarity_options = _unique_options(all_subscriptions, "rarity")
+    series_options = _unique_options(all_subscriptions, "set_name")
+    subscriptions = [
+        row
+        for row in all_subscriptions
+        if (not rarity or row["rarity"] == rarity)
+        and (not series or row["set_name"] == series)
+    ]
+    subscriptions = _sort_rows(subscriptions, sort)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {
             "settings": settings,
             "subscriptions": subscriptions,
+            "subscription_count": len(all_subscriptions),
             "alerts": alerts,
             "query": q.strip(),
             "search_results": search_results,
+            "sort": sort,
+            "rarity": rarity,
+            "series": series,
+            "show_name": show_name != "0",
+            "show_price": show_price != "0",
+            "sort_options": SORT_OPTIONS,
+            "rarity_options": rarity_options,
+            "series_options": series_options,
+            "popular_queries": POPULAR_QUERIES,
             "display_price": display_price,
             "variant_label": variant_label,
             "provider_label": provider_label,

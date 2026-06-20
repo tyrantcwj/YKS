@@ -1,16 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="toolbar-band">
-  <form class="search-form" action="/" method="get">
-    <label>
-      <span>搜索卡片</span>
-      <input name="q" value="{{ query }}" placeholder="可输入中文、日文或英文，例如 皮卡丘、ピカチュウ、pikachu">
-    </label>
-    <button class="primary-button" type="submit">搜索</button>
+<section class="search-hero">
+  <div class="hero-copy">
+    <p class="eyebrow">PTCG 卡牌价格查询</p>
+    <h1>宝可梦卡牌行情追踪</h1>
+    <p>支持中文、日文、英文名称搜索。把关心的单卡加入订阅后，系统会持续同步价格并记录历史。</p>
+  </div>
+
+  <form class="hero-search" action="/" method="get">
+    <input name="q" value="{{ query }}" placeholder="输入 皮卡丘、ピカチュウ、Pikachu 或卡片 ID">
+    <button class="primary-button" type="submit">查询</button>
   </form>
 
-  {% if query %}
-  <div class="search-results">
+  <div class="mode-row" aria-label="查询类型">
+    <a class="mode-pill active" href="/">单卡</a>
+    <span class="mode-pill muted">盒装</span>
+    <span class="mode-pill muted">卡包</span>
+    <span class="mode-note">盒装和卡包会在单卡体验稳定后补上。</span>
+  </div>
+
+  <div class="quick-row" aria-label="热门宝可梦">
+    <span>热门宝可梦</span>
+    {% for item in popular_queries %}
+    <a href="/?q={{ item }}">{{ item }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if query %}
+<section class="results-panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">搜索结果</p>
+      <h2>“{{ query }}”</h2>
+    </div>
+    <span>{{ search_results|length }} 张卡片</span>
+  </div>
+
+  <div class="search-results rich-results">
     {% for result in search_results %}
     <article class="search-result">
       <div class="search-thumb">
@@ -20,7 +47,7 @@
         <span>{{ result.local_id or result.card_id }}</span>
         {% endif %}
       </div>
-      <div>
+      <div class="result-main">
         <strong>{{ result.name }}</strong>
         <span>{{ result.card_id }} · {{ locale_label(result.tcgdex_locale) }}</span>
       </div>
@@ -33,11 +60,19 @@
       </form>
     </article>
     {% else %}
-    <p class="search-empty">没有找到 “{{ query }}” 相关卡片。</p>
+    <p class="search-empty">没有找到 “{{ query }}” 相关卡片。可以尝试输入日文、英文名或更短关键词。</p>
     {% endfor %}
   </div>
-  {% endif %}
+</section>
+{% endif %}
 
+<section class="manual-panel">
+  <div class="section-head compact">
+    <div>
+      <p class="eyebrow">手动订阅</p>
+      <h2>用 TCGdex 卡片 ID 添加</h2>
+    </div>
+  </div>
   <form class="subscribe-form" action="/subscriptions" method="post">
     <label>
       <span>卡片 ID</span>
@@ -88,56 +123,111 @@
 </section>
 {% endif %}
 
-<section class="grid">
-  {% for item in subscriptions %}
-  {% set price = display_price(item) %}
-  <article class="card {% if not item.active %}muted{% endif %}">
-    <a class="image-link" href="/subscriptions/{{ item.id }}">
-      {% if item.image_url %}
-      <img src="{{ item.image_url }}" alt="{{ item.name or item.card_id }}">
-      {% else %}
-      <span class="empty-art">{{ item.card_id }}</span>
-      {% endif %}
-    </a>
-    <div class="card-body">
-      <div class="card-head">
-        <div>
-          <h2>{{ item.nickname or item.name or item.card_id }}</h2>
-          <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }} · {{ locale_label(item.tcgdex_locale) }}</p>
-        </div>
-        <span class="status">{{ "启用" if item.active else "停用" }}</span>
-      </div>
-      <div class="price-row">
-        <span class="price">
-          {% if price is not none %}{{ item.currency }} {{ "%.2f"|format(price) }}{% else %}暂无价格{% endif %}
-        </span>
-        <span>{{ provider_label(item.provider) }} · {{ variant_label(item.variant) }}</span>
-      </div>
-      <form class="edit-form" action="/subscriptions/{{ item.id }}/edit" method="post">
-        <input class="wide-field" name="nickname" value="{{ item.nickname }}" placeholder="备注名称">
-        <select name="variant">
-          {% for option in ["holo", "normal", "reverse", "standard"] %}
-          <option value="{{ option }}" {% if item.variant == option %}selected{% endif %}>{{ variant_label(option) }}</option>
-          {% endfor %}
-        </select>
-        <input name="target_price" type="number" step="0.01" value="{{ item.target_price or '' }}" placeholder="目标价">
-        <input name="alert_percent" type="number" step="0.1" value="{{ item.alert_percent or '' }}" placeholder="涨跌%">
-        <label class="toggle"><input name="active" type="checkbox" {% if item.active %}checked{% endif %}><span>启用</span></label>
-        <button title="保存" aria-label="保存">保存</button>
-      </form>
-      <div class="actions">
-        <a href="/subscriptions/{{ item.id }}">历史</a>
-        <form action="/subscriptions/{{ item.id }}/sync" method="post"><button>同步</button></form>
-        <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">删除</button></form>
-      </div>
-      <p class="meta">上次同步：{{ item.last_synced_at or "从未同步" }}</p>
+<section class="collection-panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">我的追踪</p>
+      <h2>订阅清单</h2>
     </div>
-  </article>
-  {% else %}
-  <div class="empty-state">
-    <h1>还没有订阅</h1>
-    <p>搜索卡片或填写 TCGdex 卡片 ID，就可以开始追踪价格。</p>
+    <span>{{ subscriptions|length }} / {{ subscription_count }} 张</span>
   </div>
-  {% endfor %}
+
+  <form class="filter-bar" action="/" method="get">
+    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    <label>
+      <span>排序方式</span>
+      <select name="sort">
+        {% for value, label in sort_options %}
+        <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>稀有度</span>
+      <select name="rarity">
+        <option value="">全部</option>
+        {% for item in rarity_options %}
+        <option value="{{ item }}" {% if rarity == item %}selected{% endif %}>{{ rarity_label(item) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>系列</span>
+      <select name="series">
+        <option value="">全部</option>
+        {% for item in series_options %}
+        <option value="{{ item }}" {% if series == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="switch-label">
+      <input type="hidden" name="show_name" value="0">
+      <input name="show_name" type="checkbox" value="1" {% if show_name %}checked{% endif %}>
+      <span>显示卡名</span>
+    </label>
+    <label class="switch-label">
+      <input type="hidden" name="show_price" value="0">
+      <input name="show_price" type="checkbox" value="1" {% if show_price %}checked{% endif %}>
+      <span>显示价格</span>
+    </label>
+    <button type="submit">套用</button>
+  </form>
+
+  <section class="grid">
+    {% for item in subscriptions %}
+    {% set price = display_price(item) %}
+    <article class="card {% if not item.active %}muted{% endif %}">
+      <a class="image-link" href="/subscriptions/{{ item.id }}">
+        {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="{{ item.name or item.card_id }}">
+        {% else %}
+        <span class="empty-art">{{ item.card_id }}</span>
+        {% endif %}
+      </a>
+      <div class="card-body">
+        <div class="card-head">
+          <div>
+            {% if show_name %}
+            <h2>{{ item.nickname or item.name or item.card_id }}</h2>
+            {% endif %}
+            <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }} · {{ locale_label(item.tcgdex_locale) }}</p>
+          </div>
+          <span class="status">{{ "启用" if item.active else "停用" }}</span>
+        </div>
+        <div class="price-row">
+          {% if show_price %}
+          <span class="price">
+            {% if price is not none %}{{ item.currency }} {{ "%.2f"|format(price) }}{% else %}暂无价格{% endif %}
+          </span>
+          {% endif %}
+          <span>{{ provider_label(item.provider) }} · {{ variant_label(item.variant) }}</span>
+        </div>
+        <form class="edit-form" action="/subscriptions/{{ item.id }}/edit" method="post">
+          <input class="wide-field" name="nickname" value="{{ item.nickname }}" placeholder="备注名称">
+          <select name="variant">
+            {% for option in ["holo", "normal", "reverse", "standard"] %}
+            <option value="{{ option }}" {% if item.variant == option %}selected{% endif %}>{{ variant_label(option) }}</option>
+            {% endfor %}
+          </select>
+          <input name="target_price" type="number" step="0.01" value="{{ item.target_price or '' }}" placeholder="目标价">
+          <input name="alert_percent" type="number" step="0.1" value="{{ item.alert_percent or '' }}" placeholder="涨跌%">
+          <label class="toggle"><input name="active" type="checkbox" {% if item.active %}checked{% endif %}><span>启用</span></label>
+          <button title="保存" aria-label="保存">保存</button>
+        </form>
+        <div class="actions">
+          <a href="/subscriptions/{{ item.id }}">历史</a>
+          <form action="/subscriptions/{{ item.id }}/sync" method="post"><button>同步</button></form>
+          <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">删除</button></form>
+        </div>
+        <p class="meta">上次同步：{{ item.last_synced_at or "从未同步" }}</p>
+      </div>
+    </article>
+    {% else %}
+    <div class="empty-state">
+      <h1>还没有订阅</h1>
+      <p>先搜索卡片，再点“订阅”，这里就会出现你的追踪清单。</p>
+    </div>
+    {% endfor %}
+  </section>
 </section>
 {% endblock %}
