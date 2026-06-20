@@ -1,6 +1,7 @@
 import sqlite3
 
 from app.models import CardPayload, PricePoint
+from app.psa import PsaCert
 
 
 def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
@@ -22,9 +23,11 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
             latest.direct_price,
             latest.trend_price,
             latest.snapshot_at,
-            history.historical_high
+            history.historical_high,
+            pc.grade AS psa_grade
         FROM subscriptions s
         LEFT JOIN cards c ON c.card_id = s.card_id
+        LEFT JOIN psa_certs pc ON pc.subscription_id = s.id
         LEFT JOIN (
             SELECT ranked.*
             FROM (
@@ -112,6 +115,71 @@ def set_sync_error(db: sqlite3.Connection, subscription_id: int, message: str) -
         "UPDATE subscriptions SET last_sync_error = ? WHERE id = ?",
         (message[:500], subscription_id),
     )
+
+
+def set_psa_cert_number(db: sqlite3.Connection, subscription_id: int, cert_number: str) -> None:
+    db.execute(
+        "UPDATE subscriptions SET psa_cert_number = ? WHERE id = ?",
+        (cert_number.strip(), subscription_id),
+    )
+
+
+def set_jhs_card_id(db: sqlite3.Connection, subscription_id: int, jhs_card_id: str) -> None:
+    db.execute(
+        "UPDATE subscriptions SET jhs_card_id = ? WHERE id = ?",
+        (jhs_card_id.strip(), subscription_id),
+    )
+
+
+def save_psa_cert(db: sqlite3.Connection, subscription_id: int, cert: PsaCert) -> None:
+    db.execute(
+        """
+        INSERT INTO psa_certs (
+            subscription_id, cert_number, grade, subject, year, brand,
+            card_number, variety, spec_id, population_total, population_higher,
+            fetched_at, raw_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+        ON CONFLICT(subscription_id) DO UPDATE SET
+            cert_number = excluded.cert_number,
+            grade = excluded.grade,
+            subject = excluded.subject,
+            year = excluded.year,
+            brand = excluded.brand,
+            card_number = excluded.card_number,
+            variety = excluded.variety,
+            spec_id = excluded.spec_id,
+            population_total = excluded.population_total,
+            population_higher = excluded.population_higher,
+            fetched_at = CURRENT_TIMESTAMP,
+            raw_json = excluded.raw_json
+        """,
+        (
+            subscription_id,
+            cert.cert_number,
+            cert.grade,
+            cert.subject,
+            cert.year,
+            cert.brand,
+            cert.card_number,
+            cert.variety,
+            cert.spec_id,
+            cert.population_total,
+            cert.population_higher,
+            cert.raw_json,
+        ),
+    )
+
+
+def get_psa_cert(db: sqlite3.Connection, subscription_id: int) -> sqlite3.Row | None:
+    return db.execute(
+        "SELECT * FROM psa_certs WHERE subscription_id = ?",
+        (subscription_id,),
+    ).fetchone()
+
+
+def delete_psa_cert(db: sqlite3.Connection, subscription_id: int) -> None:
+    db.execute("DELETE FROM psa_certs WHERE subscription_id = ?", (subscription_id,))
 
 
 def get_subscription(db: sqlite3.Connection, subscription_id: int) -> sqlite3.Row | None:

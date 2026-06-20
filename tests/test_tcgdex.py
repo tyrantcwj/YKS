@@ -133,7 +133,7 @@ async def test_search_cards_filters_by_name(monkeypatch):
     assert FakeSearchAsyncClient.calls == [
         {
             "url": "https://api.tcgdex.net/v2/en/cards",
-            "params": {"name": "pikachu"},
+            "params": {"name": "like:pikachu"},
         }
     ]
     assert len(results) == 1
@@ -151,8 +151,62 @@ async def test_search_cards_uses_japanese_locale_for_japanese_query(monkeypatch)
 
     assert FakeSearchAsyncClient.calls[0] == {
         "url": "https://api.tcgdex.net/v2/ja/cards",
-        "params": {"name": "ピカチュウ"},
+        "params": {"name": "like:ピカチュウ"},
     }
     assert results[0].card_id == "E1-016"
     assert results[0].name == "ピカチュウ"
     assert results[0].tcgdex_locale == "ja"
+
+
+@pytest.mark.asyncio
+async def test_search_cards_dedupes_card_id_across_locales(monkeypatch):
+    monkeypatch.setattr(tcgdex.httpx, "AsyncClient", FakeSearchAsyncClient)
+    FakeSearchAsyncClient.calls = []
+
+    # A CJK query fans out to several locales; the same card_id must not appear
+    # twice and image-less results should sort after ones with artwork.
+    results = await search_cards("皮卡丘", limit=10)
+
+    card_ids = [result.card_id for result in results]
+    assert len(card_ids) == len(set(card_ids))
+    assert all(results[i].image_url or not results[i + 1].image_url for i in range(len(results) - 1))
+
+
+class FakeFallbackResponse:
+    def __init__(self, status_code=200, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {}
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_fetch_card_uses_fallback_image_when_missing(monkeypatch):
+    card_without_image = {
+        "id": "2022swsh-6",
+        "localId": "6",
+        "name": "Lapras",
+        "set": {"name": "McDonald's Collection 2022"},
+        "rarity": "None",
+        "pricing": {},
+    }
+
+    class NoImageClient(FakeAsyncClient):
+        async def get(self, url):
+            self.requested_url = url
+            return FakeFallbackResponse(200, card_without_image)
+
+    monkeypatch.setattr(tcgdex.httpx, "AsyncClient", NoImageClient)
+
+    async def fake_resolver(name, local_id, set_name):
+        assert name == "Lapras"
+        return "https://images.pokemontcg.io/mcd22/6_hires.png"
+
+    monkeypatch.setattr(tcgdex, "resolve_fallback_image", fake_resolver)
+
+    payload = await fetch_card("2022swsh-6")
+    assert payload.image_url == "https://images.pokemontcg.io/mcd22/6_hires.png"

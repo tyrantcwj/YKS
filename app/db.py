@@ -39,6 +39,8 @@ def init_db() -> None:
                 alert_percent REAL,
                 active INTEGER NOT NULL DEFAULT 1,
                 last_sync_error TEXT NOT NULL DEFAULT '',
+                psa_cert_number TEXT NOT NULL DEFAULT '',
+                jhs_card_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -88,6 +90,23 @@ def init_db() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS psa_certs (
+                subscription_id INTEGER PRIMARY KEY,
+                cert_number TEXT NOT NULL,
+                grade TEXT,
+                subject TEXT,
+                year TEXT,
+                brand TEXT,
+                card_number TEXT,
+                variety TEXT,
+                spec_id TEXT,
+                population_total INTEGER,
+                population_higher INTEGER,
+                fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                raw_json TEXT NOT NULL DEFAULT '{}',
+                FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
+            );
             """
         )
         _ensure_subscription_columns(db)
@@ -117,6 +136,8 @@ def _ensure_subscription_columns(conn: sqlite3.Connection) -> None:
         "alert_percent": "ALTER TABLE subscriptions ADD COLUMN alert_percent REAL",
         "active": "ALTER TABLE subscriptions ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
         "last_sync_error": "ALTER TABLE subscriptions ADD COLUMN last_sync_error TEXT NOT NULL DEFAULT ''",
+        "psa_cert_number": "ALTER TABLE subscriptions ADD COLUMN psa_cert_number TEXT NOT NULL DEFAULT ''",
+        "jhs_card_id": "ALTER TABLE subscriptions ADD COLUMN jhs_card_id TEXT NOT NULL DEFAULT ''",
         "created_at": "ALTER TABLE subscriptions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
         "updated_at": "ALTER TABLE subscriptions ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
     }

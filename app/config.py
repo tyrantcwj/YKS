@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     tcgdex_locale: str = "en"
     tcgdex_api_base: str = "https://api.tcgdex.net/v2"
     request_timeout_seconds: float = 15.0
+    pokemontcg_api_key: str = ""
+    psa_api_token: str = ""
+    jhs_enabled: bool = False
+    jhs_api_base: str = ""
     auth_username: str = "admin"
     auth_password: str = ""
     alert_webhook_url: str = ""

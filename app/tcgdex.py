@@ -1,11 +1,16 @@
 import json
+import logging
 import re
+from dataclasses import replace
 from typing import Any
 
 import httpx
 
+from app.cardimage import resolve_fallback_image
 from app.config import settings
 from app.models import CardPayload, CardSearchResult, PricePoint
+
+logger = logging.getLogger(__name__)
 
 
 class CardNotFoundError(ValueError):
@@ -155,10 +160,19 @@ async def fetch_card(card_id: str, locale: str | None = None) -> CardPayload:
     pricing = card.get("pricing") if isinstance(card.get("pricing"), dict) else {}
     prices = [*_tcgplayer_prices(pricing), *_cardmarket_prices(pricing)]
 
+    image_url = _image_url(card)
+    if image_url is None:
+        local_id = card.get("localId")
+        image_url = await resolve_fallback_image(
+            card.get("name"),
+            str(local_id) if local_id is not None else None,
+            _set_name(card),
+        )
+
     return CardPayload(
         card_id=card.get("id", card_id),
         name=card.get("name", card_id),
-        image_url=_image_url(card),
+        image_url=image_url,
         set_name=_set_name(card),
         rarity=card.get("rarity"),
         raw_json=json.dumps(card, ensure_ascii=True),
@@ -166,43 +180,61 @@ async def fetch_card(card_id: str, locale: str | None = None) -> CardPayload:
     )
 
 
-async def search_cards(query: str, limit: int = 12) -> list[CardSearchResult]:
+async def search_cards(query: str, limit: int = 24) -> list[CardSearchResult]:
     query = query.strip()
     if not query:
         return []
 
     locales = _search_locales(query)
+    # `like:` makes TCGdex do a case-insensitive substring match instead of the
+    # near-exact match a bare `name=` performs, which is why partial queries
+    # used to "find nothing".
+    params = {"name": f"like:{query}"}
+    per_locale = max(limit, 12)
+
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
-        responses = []
+        responses: list[tuple[str, Any]] = []
         for locale in locales:
             url = f"{_api_base()}/{locale}/cards"
-            response = await client.get(url, params={"name": query})
+            try:
+                response = await client.get(url, params=params)
+            except httpx.HTTPError:
+                logger.debug("Search failed for locale %s", locale, exc_info=True)
+                continue
             if response.status_code == 404:
                 continue
-            response.raise_for_status()
+            if response.status_code >= 400:
+                continue
             responses.append((locale, response.json()))
 
-    results: list[CardSearchResult] = []
-    seen: set[tuple[str, str]] = set()
+    # Dedup by card_id (not locale+id) so the same physical card never eats
+    # multiple result slots. Each locale gets its own budget so a CJK search
+    # returns a mix instead of being filled entirely by the first locale.
+    results: dict[str, CardSearchResult] = {}
     for locale, cards in responses:
         if not isinstance(cards, list):
             continue
+        added = 0
         for card in cards:
             if not isinstance(card, dict) or not card.get("id"):
                 continue
-            key = (locale, str(card["id"]))
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append(
-                CardSearchResult(
-                    card_id=str(card["id"]),
-                    name=str(card.get("name") or card["id"]),
-                    image_url=_brief_image_url(card),
+            card_id = str(card["id"])
+            brief_image = _brief_image_url(card)
+            existing = results.get(card_id)
+            if existing is None:
+                results[card_id] = CardSearchResult(
+                    card_id=card_id,
+                    name=str(card.get("name") or card_id),
+                    image_url=brief_image,
                     tcgdex_locale=locale,
                     local_id=str(card["localId"]) if card.get("localId") is not None else None,
                 )
-            )
-            if len(results) >= limit:
-                return results
-    return results
+                added += 1
+            elif existing.image_url is None and brief_image:
+                results[card_id] = replace(existing, image_url=brief_image)
+            if added >= per_locale:
+                break
+
+    # Keep cards that have artwork first so results don't look "empty".
+    ordered = sorted(results.values(), key=lambda result: 0 if result.image_url else 1)
+    return ordered[:limit]

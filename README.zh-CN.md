@@ -336,6 +336,10 @@ DATABASE_PATH=data/app.db
 SYNC_INTERVAL_MINUTES=360
 TCGDEX_LOCALE=en
 TCGDEX_API_BASE=https://api.tcgdex.net/v2
+POKEMONTCG_API_KEY=
+PSA_API_TOKEN=
+JHS_ENABLED=false
+JHS_API_BASE=
 AUTH_USERNAME=admin
 AUTH_PASSWORD=
 ALERT_WEBHOOK_URL=
@@ -381,6 +385,18 @@ ALERT_WEBHOOK_TIMEOUT_SECONDS=10
   ]
 }
 ```
+
+### 卡图回退（缺图时）
+
+部分卡片（促销卡、麦当劳系列、部分日文/中文卡）在 TCGdex 上**根本没有图**，这时列表/详情会显示文字占位。系统会自动回退到 [pokemontcg.io](https://pokemontcg.io) 按卡名+编号找图并缓存，无需配置即可工作；填上免费的 `POKEMONTCG_API_KEY` 会更稳定、更不容易超额。
+
+### PSA 评级（评级 + 族群，无价格）
+
+PSA 官方免费 API 只支持**按证书号查单张**，返回评级分数与族群数量（不含价格）。到 [psacard.com/publicapi](https://www.psacard.com/publicapi) 注册拿到 token 后填入 `PSA_API_TOKEN`，再在某张卡的详情页填入 PSA 证书号即可。详情页会显示评级、同级/更高分族群，首页卡片会出现 `PSA xx` 角标。
+
+### 集换社 / 中国行情（实验性）
+
+集换社没有公开 API、App 有加密与反爬，**自动抓取多半拿不到数据**，所以默认关闭（`JHS_ENABLED=false`）。可靠做法是在卡片详情页用“手动记录”按**人民币(CNY)**录入集换价，会和其它来源一起入库展示。若你确实有一个能返回价格 JSON 的中转地址，可设 `JHS_ENABLED=true` 与 `JHS_API_BASE`，并在详情页填集换社卡片 ID 尝试自动抓取（失败会静默跳过，不影响其它同步）。
 
 ## 网页没有数据怎么办
 

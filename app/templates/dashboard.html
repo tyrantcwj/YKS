@@ -331,7 +331,10 @@
             {% endif %}
             <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }} · {{ locale_label(item.tcgdex_locale) }}</p>
           </div>
-          <span class="status">{{ "启用" if item.active else "停用" }}</span>
+          <div class="card-head-tags">
+            {% if item.psa_grade %}<span class="status psa-badge">PSA {{ item.psa_grade }}</span>{% endif %}
+            <span class="status">{{ "启用" if item.active else "停用" }}</span>
+          </div>
         </div>
         <div class="price-row">
           {% if show_price %}

@@ -1666,3 +1666,76 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+.card-head-tags {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.psa-badge {
+  background: #fff1e6;
+  color: #c2410c;
+}
+
+.psa-card {
+  align-items: center;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e6e6ef);
+  border-radius: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+}
+
+.psa-grade {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 96px;
+}
+
+.psa-grade span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.psa-grade strong {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.psa-meta {
+  display: grid;
+  flex: 1 1 320px;
+  gap: 8px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.psa-meta div {
+  display: flex;
+  flex-direction: column;
+}
+
+.psa-meta dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.psa-meta dd {
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .psa-meta {
+    grid-template-columns: 1fr;
+  }
+}

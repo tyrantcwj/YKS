@@ -213,6 +213,47 @@
 
 <section class="panel">
   <div class="section-head">
+    <div><p class="eyebrow">评级 & 中国行情</p><h2>PSA 鉴定 & 集换社</h2></div>
+    {% if not settings.psa_api_token %}<span>未配置 PSA_API_TOKEN</span>{% endif %}
+  </div>
+
+  {% if psa_cert %}
+  <div class="psa-card">
+    <div class="psa-grade">
+      <span>PSA 评级</span>
+      <strong>{{ psa_cert.grade or "—" }}</strong>
+    </div>
+    <dl class="psa-meta">
+      <div><dt>证书号</dt><dd>{{ psa_cert.cert_number }}</dd></div>
+      <div><dt>卡名</dt><dd>{{ psa_cert.subject or "—" }}</dd></div>
+      <div><dt>年份/品牌</dt><dd>{{ psa_cert.year or "—" }} {{ psa_cert.brand or "" }}</dd></div>
+      <div><dt>同级族群</dt><dd>{{ psa_cert.population_total if psa_cert.population_total is not none else "—" }}</dd></div>
+      <div><dt>更高分族群</dt><dd>{{ psa_cert.population_higher if psa_cert.population_higher is not none else "—" }}</dd></div>
+    </dl>
+    <p class="source-foot">更新于 {{ psa_cert.fetched_at }}（PSA 官方 API 只提供评级与族群，不含价格）</p>
+  </div>
+  {% endif %}
+
+  <form class="manual-price-form" action="/subscriptions/{{ subscription.id }}/psa" method="post">
+    <label>
+      <span>PSA 证书号</span>
+      <input name="cert_number" value="{{ subscription.psa_cert_number or '' }}" placeholder="如 10000001（留空可清除）">
+    </label>
+    <button class="primary-button" type="submit">保存并查询</button>
+  </form>
+
+  <form class="manual-price-form" action="/subscriptions/{{ subscription.id }}/jhs" method="post">
+    <label>
+      <span>集换社卡片 ID（实验性）</span>
+      <input name="jhs_card_id" value="{{ subscription.jhs_card_id or '' }}" placeholder="{% if jhs_enabled %}集换社内部卡片 ID{% else %}需先开启 JHS_ENABLED{% endif %}">
+    </label>
+    <button class="primary-button" type="submit">保存</button>
+  </form>
+  <p class="source-foot">集换社无公开 API，自动抓取多半拿不到数据；推荐用下方“手动记录”按人民币(CNY)录入集换价。</p>
+</section>
+
+<section class="panel">
+  <div class="section-head">
     <div><p class="eyebrow">成交参考</p><h2>外部行情 & 手动记录</h2></div>
   </div>
   <div class="research-grid">
@@ -225,6 +266,7 @@
       <span>来源</span>
       <select name="provider">
         <option value="manual">手动记录</option>
+        <option value="jihuanshe">集换社</option>
         <option value="ebay">eBay</option>
         <option value="snkrdunk">Snkrdunk</option>
         <option value="tcgplayer">TCGplayer</option>

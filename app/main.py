@@ -49,6 +49,7 @@ PROVIDER_LABELS = {
     "cardmarket": "Cardmarket",
     "ebay": "eBay",
     "snkrdunk": "Snkrdunk",
+    "jihuanshe": "集换社",
     "manual": "手动记录",
 }
 
@@ -612,6 +613,32 @@ async def add_manual_price(
     return flash_redirect(f"/subscriptions/{subscription_id}")
 
 
+@app.post("/subscriptions/{subscription_id}/psa")
+async def set_psa_cert(subscription_id: int, cert_number: str = Form("")):
+    cert_number = cert_number.strip()
+    with get_db() as db:
+        if repository.get_subscription(db, subscription_id) is None:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        repository.set_psa_cert_number(db, subscription_id, cert_number)
+        if not cert_number:
+            repository.delete_psa_cert(db, subscription_id)
+    if cert_number:
+        await sync_subscription(subscription_id)
+    return flash_redirect(f"/subscriptions/{subscription_id}")
+
+
+@app.post("/subscriptions/{subscription_id}/jhs")
+async def set_jhs_card(subscription_id: int, jhs_card_id: str = Form("")):
+    jhs_card_id = jhs_card_id.strip()
+    with get_db() as db:
+        if repository.get_subscription(db, subscription_id) is None:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        repository.set_jhs_card_id(db, subscription_id, jhs_card_id)
+    if jhs_card_id:
+        await sync_subscription(subscription_id)
+    return flash_redirect(f"/subscriptions/{subscription_id}")
+
+
 @app.post("/subscriptions/{subscription_id}/delete")
 async def delete_one(subscription_id: int):
     with get_db() as db:
@@ -628,6 +655,7 @@ async def subscription_detail(request: Request, subscription_id: int):
         history = repository.recent_prices(db, subscription_id, limit=80)
         latest_prices = repository.latest_prices_by_subscription(db, subscription_id)
         provider_stats = repository.provider_market_stats(db, subscription_id)
+        psa_cert = repository.get_psa_cert(db, subscription_id)
     detail = build_detail_context(subscription, history, latest_prices, provider_stats)
     return templates.TemplateResponse(
         request,
@@ -638,6 +666,8 @@ async def subscription_detail(request: Request, subscription_id: int):
             "history": history,
             "latest_prices": latest_prices,
             "provider_stats": provider_stats,
+            "psa_cert": psa_cert,
+            "jhs_enabled": settings.jhs_enabled,
             "market_links": market_links(subscription),
             "chart": build_price_chart(history, subscription["variant"]),
             "trend_chart": build_trend_chart(history),

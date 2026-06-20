@@ -4,7 +4,9 @@ import sqlite3
 
 from app import repository
 from app.db import get_db
+from app.jihuanshe import fetch_prices as fetch_jhs_prices
 from app.notifier import AlertNotification, send_alert_notifications
+from app.psa import fetch_cert as fetch_psa_cert
 from app.tcgdex import CardNotFoundError, fetch_card
 
 logger = logging.getLogger(__name__)
@@ -80,8 +82,11 @@ async def sync_subscription(subscription_id: int) -> bool:
         subscription = repository.get_subscription(db, subscription_id)
         if subscription is None:
             return False
+        keys = subscription.keys()
         card_id = subscription["card_id"]
         locale = subscription["tcgdex_locale"] or None
+        psa_cert_number = subscription["psa_cert_number"] if "psa_cert_number" in keys else ""
+        jhs_card_id = subscription["jhs_card_id"] if "jhs_card_id" in keys else ""
 
     try:
         payload = await fetch_card(card_id, locale)
@@ -98,12 +103,23 @@ async def sync_subscription(subscription_id: int) -> bool:
             repository.set_sync_error(db, subscription_id, message)
         return False
 
+    # Optional, fail-soft extra sources. Network calls happen outside the DB
+    # context so a slow/blocked provider never holds a write transaction open.
+    psa_cert = None
+    if (psa_cert_number or "").strip():
+        psa_cert = await fetch_psa_cert(psa_cert_number)
+    jhs_prices = await fetch_jhs_prices(jhs_card_id) if (jhs_card_id or "").strip() else []
+
     notifications: list[AlertNotification] = []
     with get_db() as db:
         subscription = repository.get_subscription(db, subscription_id)
         if subscription is None:
             return False
         repository.save_card_payload(db, subscription_id, payload)
+        for price in jhs_prices:
+            repository.save_price_snapshot(db, subscription_id, card_id, price)
+        if psa_cert is not None:
+            repository.save_psa_cert(db, subscription_id, psa_cert)
         repository.set_sync_error(db, subscription_id, "")
         latest = repository.latest_price_for_variant(
             db,
