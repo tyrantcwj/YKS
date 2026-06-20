@@ -25,17 +25,24 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
             history.historical_high
         FROM subscriptions s
         LEFT JOIN cards c ON c.card_id = s.card_id
-        LEFT JOIN price_snapshots latest ON latest.id = (
-            SELECT ps.id
-            FROM price_snapshots ps
-            WHERE ps.subscription_id = s.id
-              AND COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) IS NOT NULL
-            ORDER BY
-                (ps.variant = s.variant) DESC,
-                ps.snapshot_at DESC,
-                ps.id DESC
-            LIMIT 1
-        )
+        LEFT JOIN (
+            SELECT ranked.*
+            FROM (
+                SELECT
+                    ps.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ps.subscription_id
+                        ORDER BY
+                            (ps.variant = sub.variant) DESC,
+                            ps.snapshot_at DESC,
+                            ps.id DESC
+                    ) AS _rank
+                FROM price_snapshots ps
+                JOIN subscriptions sub ON sub.id = ps.subscription_id
+                WHERE COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) IS NOT NULL
+            ) ranked
+            WHERE ranked._rank = 1
+        ) latest ON latest.subscription_id = s.id
         LEFT JOIN (
             SELECT
                 subscription_id,
