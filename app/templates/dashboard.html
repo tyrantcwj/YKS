@@ -66,6 +66,83 @@
 </section>
 {% endif %}
 
+<section class="market-overview" aria-label="行情概览">
+  <div class="section-head compact">
+    <div>
+      <p class="eyebrow">本地行情</p>
+      <h2>行情概览</h2>
+    </div>
+  </div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <span>追踪总数</span>
+      <strong>{{ market_summary.total_subscriptions }}</strong>
+    </div>
+    <div class="summary-card">
+      <span>有价格</span>
+      <strong>{{ market_summary.priced_subscriptions }}</strong>
+    </div>
+    <div class="summary-card">
+      <span>价格快照</span>
+      <strong>{{ market_summary.price_snapshots }}</strong>
+    </div>
+    <div class="summary-card">
+      <span>最高记录</span>
+      <strong>
+        {% if market_summary.highest_price is not none %}
+        {{ market_summary.highest_currency or "" }} {{ "%.2f"|format(market_summary.highest_price) }}
+        {% else %}
+        暂无
+        {% endif %}
+      </strong>
+    </div>
+  </div>
+</section>
+
+<section class="movement-panel" aria-label="最近涨跌">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">价格变化</p>
+      <h2>最近涨跌</h2>
+    </div>
+    <span>按本地记录计算</span>
+  </div>
+  <div class="movement-list">
+    {% for movement in price_movements %}
+    <a class="movement-row" href="/subscriptions/{{ movement.subscription_id }}">
+      <div class="movement-thumb">
+        {% if movement.image_url %}
+        <img src="{{ movement.image_url }}" alt="{{ movement.title }}">
+        {% else %}
+        <span>{{ movement.card_id }}</span>
+        {% endif %}
+      </div>
+      <div class="movement-main">
+        <strong>{{ movement.title }}</strong>
+        <span>{{ provider_label(movement.provider) }} · {{ variant_label(movement.variant) }} · {{ movement.snapshot_at }}</span>
+      </div>
+      <div class="movement-price">
+        <strong>{{ movement.currency or "" }} {{ "%.2f"|format(movement.latest_price) }}</strong>
+        {% if movement.previous_price is not none %}
+        <span>上次 {{ movement.currency or "" }} {{ "%.2f"|format(movement.previous_price) }}</span>
+        {% else %}
+        <span>等待下一次记录</span>
+        {% endif %}
+      </div>
+      {% if movement.change_percent is not none %}
+      <span class="movement-change {% if movement.change_percent >= 0 %}up{% else %}down{% endif %}">
+        {% if movement.change_percent >= 0 %}+{% endif %}{{ "%.1f"|format(movement.change_percent) }}%
+      </span>
+      {% else %}
+      <span class="movement-change flat">新记录</span>
+      {% endif %}
+    </a>
+    {% else %}
+    <p class="movement-empty">记录至少两次价格后，这里会显示最近涨跌榜。</p>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="manual-panel">
   <div class="section-head compact">
     <div>

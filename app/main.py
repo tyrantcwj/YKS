@@ -274,6 +274,8 @@ async def dashboard(
     with get_db() as db:
         all_subscriptions = repository.list_subscriptions(db)
         alerts = repository.list_alerts(db)
+        market_summary = repository.market_summary(db)
+        price_movements = repository.recent_price_movements(db)
     rarity_options = _unique_options(all_subscriptions, "rarity")
     series_options = _unique_options(all_subscriptions, "set_name")
     subscriptions = [
@@ -291,6 +293,8 @@ async def dashboard(
             "subscriptions": subscriptions,
             "subscription_count": len(all_subscriptions),
             "alerts": alerts,
+            "market_summary": market_summary,
+            "price_movements": price_movements,
             "query": q.strip(),
             "search_results": search_results,
             "sort": sort,

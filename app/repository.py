@@ -239,6 +239,94 @@ def latest_prices_by_subscription(db: sqlite3.Connection, subscription_id: int) 
     ).fetchall()
 
 
+def market_summary(db: sqlite3.Connection) -> sqlite3.Row:
+    return db.execute(
+        """
+        WITH latest AS (
+            SELECT
+                s.id,
+                ps.currency,
+                COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) AS display_price
+            FROM subscriptions s
+            LEFT JOIN price_snapshots ps ON ps.id = (
+                SELECT inner_ps.id
+                FROM price_snapshots inner_ps
+                WHERE inner_ps.subscription_id = s.id
+                  AND inner_ps.variant = s.variant
+                ORDER BY inner_ps.snapshot_at DESC, inner_ps.id DESC
+                LIMIT 1
+            )
+        )
+        SELECT
+            (SELECT COUNT(*) FROM subscriptions) AS total_subscriptions,
+            (SELECT COUNT(*) FROM subscriptions WHERE active = 1) AS active_subscriptions,
+            (SELECT COUNT(*) FROM latest WHERE display_price IS NOT NULL) AS priced_subscriptions,
+            (SELECT COUNT(*) FROM price_snapshots) AS price_snapshots,
+            (SELECT MAX(display_price) FROM latest) AS highest_price,
+            (
+                SELECT currency
+                FROM latest
+                WHERE display_price IS NOT NULL
+                ORDER BY display_price DESC
+                LIMIT 1
+            ) AS highest_currency,
+            (SELECT MAX(last_synced_at) FROM cards) AS last_synced_at
+        """
+    ).fetchone()
+
+
+def recent_price_movements(db: sqlite3.Connection, limit: int = 6) -> list[sqlite3.Row]:
+    return db.execute(
+        """
+        WITH ranked AS (
+            SELECT
+                ps.*,
+                COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) AS display_price,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ps.subscription_id, ps.variant
+                    ORDER BY ps.snapshot_at DESC, ps.id DESC
+                ) AS rank
+            FROM price_snapshots ps
+        ),
+        latest AS (
+            SELECT * FROM ranked WHERE rank = 1 AND display_price IS NOT NULL
+        ),
+        previous AS (
+            SELECT * FROM ranked WHERE rank = 2 AND display_price IS NOT NULL
+        )
+        SELECT
+            s.id AS subscription_id,
+            s.card_id,
+            COALESCE(NULLIF(s.nickname, ''), c.name, s.card_id) AS title,
+            c.image_url,
+            c.set_name,
+            c.rarity,
+            latest.provider,
+            latest.currency,
+            latest.variant,
+            latest.display_price AS latest_price,
+            previous.display_price AS previous_price,
+            latest.snapshot_at,
+            CASE
+                WHEN previous.display_price IS NULL OR previous.display_price = 0 THEN NULL
+                ELSE ((latest.display_price - previous.display_price) / previous.display_price) * 100
+            END AS change_percent
+        FROM latest
+        JOIN subscriptions s ON s.id = latest.subscription_id
+        LEFT JOIN previous ON previous.subscription_id = latest.subscription_id
+            AND previous.variant = latest.variant
+        LEFT JOIN cards c ON c.card_id = latest.card_id
+        ORDER BY
+            CASE WHEN previous.display_price IS NULL THEN 1 ELSE 0 END,
+            ABS(COALESCE(change_percent, 0)) DESC,
+            latest.snapshot_at DESC,
+            latest.id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+
 def create_alert(db: sqlite3.Connection, subscription_id: int, kind: str, message: str) -> None:
     db.execute(
         "INSERT INTO alerts (subscription_id, kind, message) VALUES (?, ?, ?)",
