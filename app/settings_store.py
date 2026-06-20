@@ -44,6 +44,16 @@ EDITABLE_SETTINGS: dict[str, tuple[str, str, str]] = {
         "text",
         "能返回价格 JSON 的中转地址，留空则不抓",
     ),
+    "pikaqian_api_key": (
+        "PikaQian API Key（简中卡库/价格）",
+        "password",
+        "pikaqian.com 注册生成 pk_live_…，填了搜索才会带 PikaQian 简中卡",
+    ),
+    "chs_image_base": (
+        "国行卡图地址前缀",
+        "text",
+        "默认走 jsDelivr，被墙时可换成你的 GitHub 镜像（以 / 结尾）",
+    ),
     "alert_webhook_url": (
         "提醒 Webhook 地址",
         "text",

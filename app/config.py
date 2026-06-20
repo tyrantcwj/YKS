@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     psa_api_token: str = ""
     jhs_enabled: bool = False
     jhs_api_base: str = ""
+    pikaqian_api_key: str = ""
+    pikaqian_api_base: str = ""
+    chs_image_base: str = ""
     auth_username: str = "admin"
     auth_password: str = ""
     alert_webhook_url: str = ""

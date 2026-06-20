@@ -27,7 +27,7 @@ from app.pricing import (
     sync_all_subscriptions,
     sync_subscription,
 )
-from app.tcgdex import search_cards
+from app.cards import search_all
 from app.tcgdex import LOCALE_LABELS
 from app.updater import apply_update, read_build_info, update_status
 
@@ -51,6 +51,8 @@ PROVIDER_LABELS = {
     "ebay": "eBay",
     "snkrdunk": "Snkrdunk",
     "jihuanshe": "集换社",
+    "pikaqian": "PikaQian",
+    "chs": "国行卡库",
     "manual": "手动记录",
 }
 
@@ -364,7 +366,7 @@ async def dashboard(
     show_name: str = "1",
     show_price: str = "1",
 ):
-    search_results = await search_cards(q) if q.strip() else []
+    search_results = await search_all(q) if q.strip() else []
     with get_db() as db:
         all_subscriptions = repository.list_subscriptions(db)
         alerts = repository.list_alerts(db)

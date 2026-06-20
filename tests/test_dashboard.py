@@ -12,7 +12,7 @@ def test_dashboard_renders_search_results(tmp_path, monkeypatch):
     monkeypatch.setattr("app.config.settings.database_path", str(db_path))
     init_db()
 
-    async def fake_search_cards(query):
+    async def fake_search_all(query):
         assert query == "pikachu"
         return [
             CardSearchResult(
@@ -24,7 +24,7 @@ def test_dashboard_renders_search_results(tmp_path, monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "search_cards", fake_search_cards)
+    monkeypatch.setattr(main, "search_all", fake_search_all)
 
     with TestClient(main.app) as client:
         response = client.get("/?q=pikachu")

@@ -3,11 +3,12 @@ import logging
 import sqlite3
 
 from app import repository
+from app.cards import fetch_card_payload
 from app.db import get_db
 from app.jihuanshe import fetch_prices as fetch_jhs_prices
 from app.notifier import AlertNotification, send_alert_notifications
 from app.psa import fetch_cert as fetch_psa_cert
-from app.tcgdex import CardNotFoundError, fetch_card
+from app.tcgdex import CardNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +90,9 @@ async def sync_subscription(subscription_id: int) -> bool:
         jhs_card_id = subscription["jhs_card_id"] if "jhs_card_id" in keys else ""
 
     try:
-        payload = await fetch_card(card_id, locale)
+        payload = await fetch_card_payload(card_id, locale)
     except CardNotFoundError:
-        message = f"TCGdex 找不到卡片 {card_id}，请确认卡片 ID 是否正确。"
+        message = f"找不到卡片 {card_id}，请确认卡片 ID 是否正确。"
         logger.warning("Card %s was not found", card_id)
         with get_db() as db:
             repository.set_sync_error(db, subscription_id, message)

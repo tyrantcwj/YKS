@@ -507,6 +507,15 @@ Charizard（英文）
 
 结果会把几种语言交叉排列，方便对比不同语区的同一只宝可梦。名称对照表来自宝可梦官方多语言数据（见 `scripts/build_pokemon_names.py`，数据文件 `app/data/pokemon_names.json`，覆盖全国图鉴 1025 只），如需更新可重新运行该脚本。
 
+### 简体中文（国行）卡片来源
+
+TCGdex 的简中数据很少，所以本项目额外内置了一份**国行简中卡库**，搜索中文时会优先把国行卡排在前面：
+
+- **内置离线卡库（默认开启，免配置）**：打包了约 2 万张国行单卡（数据来自社区 [PTCG-CHS-Datasets](https://github.com/duanxr/PTCG-CHS-Datasets)，见 `scripts/build_chs_cards.py` 与 `app/data/chs_cards.json`）。这些卡的 ID 形如 `chs:12511`，订阅后没有自动价格（国行无公开价格 API），可在详情页用「手动记录」按人民币(CNY)录价。卡图默认走 jsDelivr，被墙时可在「设置」页改 `国行卡图地址前缀`。
+- **PikaQian 在线 API（可选，需 Key）**：在 [pikaqian.com](https://pikaqian.com/docs) 注册拿到 `pk_live_…`，填到「设置」页的 `PikaQian API Key`，搜索就会额外带上 PikaQian 的简中卡（含官方卡图，付费档还带裸卡/评级价格）。这些卡 ID 形如 `pika:<id>`，订阅后会自动同步 PikaQian 数据。
+
+> 注：即便如此，某些卡在国行根本没有发行，自然就搜不到简中版——这是发行情况决定的。
+
 ## 本地开发
 
 ```powershell
