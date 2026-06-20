@@ -21,7 +21,8 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
             latest.high_price,
             latest.direct_price,
             latest.trend_price,
-            latest.snapshot_at
+            latest.snapshot_at,
+            history.historical_high
         FROM subscriptions s
         LEFT JOIN cards c ON c.card_id = s.card_id
         LEFT JOIN price_snapshots latest ON latest.id = (
@@ -34,6 +35,15 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
                 ps.id DESC
             LIMIT 1
         )
+        LEFT JOIN (
+            SELECT
+                subscription_id,
+                variant,
+                MAX(COALESCE(market_price, trend_price, mid_price, low_price)) AS historical_high
+            FROM price_snapshots
+            GROUP BY subscription_id, variant
+        ) history ON history.subscription_id = s.id
+            AND history.variant = s.variant
         ORDER BY s.active DESC, s.updated_at DESC, s.id DESC
         """
     ).fetchall()
@@ -321,6 +331,63 @@ def recent_price_movements(db: sqlite3.Connection, limit: int = 6) -> list[sqlit
             ABS(COALESCE(change_percent, 0)) DESC,
             latest.snapshot_at DESC,
             latest.id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+
+def ranked_cards(db: sqlite3.Connection, limit: int = 8) -> list[sqlite3.Row]:
+    return db.execute(
+        """
+        WITH prices AS (
+            SELECT
+                ps.subscription_id,
+                ps.variant,
+                COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) AS display_price
+            FROM price_snapshots ps
+        ),
+        ranked AS (
+            SELECT
+                s.id AS subscription_id,
+                s.card_id,
+                COALESCE(NULLIF(s.nickname, ''), c.name, s.card_id) AS title,
+                c.image_url,
+                c.set_name,
+                c.rarity,
+                s.variant,
+                latest.currency,
+                latest.display_price AS latest_price,
+                MAX(prices.display_price) AS historical_high,
+                COUNT(prices.display_price) AS sample_count
+            FROM subscriptions s
+            LEFT JOIN cards c ON c.card_id = s.card_id
+            LEFT JOIN prices ON prices.subscription_id = s.id
+                AND prices.variant = s.variant
+                AND prices.display_price IS NOT NULL
+            LEFT JOIN (
+                SELECT
+                    ps.subscription_id,
+                    ps.variant,
+                    ps.currency,
+                    COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) AS display_price,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ps.subscription_id, ps.variant
+                        ORDER BY ps.snapshot_at DESC, ps.id DESC
+                    ) AS rank
+                FROM price_snapshots ps
+            ) latest ON latest.subscription_id = s.id
+                AND latest.variant = s.variant
+                AND latest.rank = 1
+            GROUP BY s.id
+        )
+        SELECT *
+        FROM ranked
+        ORDER BY
+            CASE WHEN historical_high IS NULL THEN 1 ELSE 0 END,
+            historical_high DESC,
+            sample_count DESC,
+            title COLLATE NOCASE ASC
         LIMIT ?
         """,
         (limit,),

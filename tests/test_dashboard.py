@@ -34,6 +34,42 @@ def test_dashboard_renders_search_results(tmp_path, monkeypatch):
     assert "basep-1" in response.text
 
 
+def test_dashboard_renders_ranking_and_code_filter(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr("app.config.settings.database_path", str(db_path))
+    init_db()
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        subscription_id = repository.create_subscription(
+            conn,
+            card_id="basep-1",
+            nickname="Pikachu",
+            variant="normal",
+            target_price=None,
+            alert_percent=None,
+        )
+        repository.save_price_snapshot(
+            conn,
+            subscription_id,
+            "basep-1",
+            PricePoint(provider="manual", currency="JPY", variant="normal", market_price=200.0),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with TestClient(main.app) as client:
+        response = client.get("/?sort=history_desc&code=basep")
+
+    assert response.status_code == 200
+    assert "热门排行" in response.text
+    assert "编号" in response.text
+    assert "历史最高价：高→低" in response.text
+    assert "JPY 200.00" in response.text
+
+
 def test_export_routes_return_csv(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
     monkeypatch.setattr("app.config.settings.database_path", str(db_path))

@@ -98,6 +98,7 @@ a {
 
 .search-hero,
 .results-panel,
+.ranking-panel,
 .market-overview,
 .movement-panel,
 .manual-panel,
@@ -153,6 +154,7 @@ a {
 }
 
 .mode-row,
+.scan-row,
 .quick-row {
   align-items: center;
   display: flex;
@@ -162,7 +164,8 @@ a {
 }
 
 .mode-pill,
-.quick-row a {
+.quick-row a,
+.scan-row button {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -184,9 +187,16 @@ a {
 }
 
 .mode-note,
-.quick-row span {
+.quick-row span,
+.scan-row span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.scan-row button {
+  background: #f1f4f8;
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .section-head {
@@ -208,11 +218,107 @@ a {
 }
 
 .results-panel,
+.ranking-panel,
 .market-overview,
 .movement-panel,
 .manual-panel,
 .collection-panel {
   background: transparent;
+}
+
+.ranking-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+}
+
+.ranking-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 28px 46px minmax(0, 1fr) minmax(92px, auto);
+  min-width: 0;
+  padding: 10px;
+}
+
+.rank-no {
+  align-items: center;
+  background: #202733;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 850;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.ranking-thumb {
+  align-items: center;
+  background: #e9eef6;
+  border-radius: 6px;
+  display: flex;
+  height: 58px;
+  justify-content: center;
+  overflow: hidden;
+  width: 44px;
+}
+
+.ranking-thumb img {
+  height: 58px;
+  object-fit: contain;
+}
+
+.ranking-thumb span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  padding: 4px;
+  text-align: center;
+}
+
+.ranking-main,
+.ranking-price {
+  min-width: 0;
+}
+
+.ranking-main strong,
+.ranking-main span,
+.ranking-price strong,
+.ranking-price span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.ranking-main span,
+.ranking-price span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.ranking-price {
+  text-align: right;
+}
+
+.ranking-price strong {
+  font-size: 16px;
+}
+
+.ranking-empty {
+  background: #ffffff;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
 }
 
 .summary-grid {
@@ -640,6 +746,30 @@ button,
   font-size: 12px;
 }
 
+.card-stats {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.card-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card-stats strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .card .edit-form {
   align-items: stretch;
   gap: 8px;
@@ -1033,6 +1163,15 @@ th {
     grid-template-columns: 46px minmax(0, 1fr) 72px;
   }
 
+  .ranking-card {
+    grid-template-columns: 28px 46px minmax(0, 1fr);
+  }
+
+  .ranking-price {
+    grid-column: 3;
+    text-align: left;
+  }
+
   .movement-price {
     grid-column: 2 / -1;
     text-align: left;
@@ -1066,6 +1205,19 @@ th {
 
   .movement-row {
     grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .ranking-card {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .ranking-thumb {
+    grid-column: 1;
+  }
+
+  .ranking-main,
+  .ranking-price {
+    grid-column: 2;
   }
 
   .movement-change {

@@ -78,6 +78,8 @@ SEARCH_LOCALE_OPTIONS = [
 
 SORT_OPTIONS = [
     ("updated_desc", "最近更新"),
+    ("history_desc", "历史最高价：高→低"),
+    ("history_asc", "历史最高价：低→高"),
     ("price_desc", "最新价格：高→低"),
     ("price_asc", "最新价格：低→高"),
     ("name_asc", "卡名：A→Z"),
@@ -168,7 +170,15 @@ def _row_price(row) -> float | None:
     return display_price(row)
 
 
+def _row_historical_high(row) -> float | None:
+    return row["historical_high"] if "historical_high" in row.keys() else None
+
+
 def _sort_rows(rows, sort: str):
+    if sort == "history_desc":
+        return sorted(rows, key=lambda row: (_row_historical_high(row) is not None, _row_historical_high(row) or 0), reverse=True)
+    if sort == "history_asc":
+        return sorted(rows, key=lambda row: (_row_historical_high(row) is None, _row_historical_high(row) or 0))
     if sort == "price_desc":
         return sorted(rows, key=lambda row: (_row_price(row) is not None, _row_price(row) or 0), reverse=True)
     if sort == "price_asc":
@@ -267,6 +277,7 @@ async def dashboard(
     sort: str = "updated_desc",
     rarity: str = "",
     series: str = "",
+    code: str = "",
     show_name: str = "1",
     show_price: str = "1",
 ):
@@ -276,13 +287,16 @@ async def dashboard(
         alerts = repository.list_alerts(db)
         market_summary = repository.market_summary(db)
         price_movements = repository.recent_price_movements(db)
+        ranked_cards = repository.ranked_cards(db)
     rarity_options = _unique_options(all_subscriptions, "rarity")
     series_options = _unique_options(all_subscriptions, "set_name")
+    code_options = _unique_options(all_subscriptions, "card_id")
     subscriptions = [
         row
         for row in all_subscriptions
         if (not rarity or row["rarity"] == rarity)
         and (not series or row["set_name"] == series)
+        and (not code or code.lower() in row["card_id"].lower())
     ]
     subscriptions = _sort_rows(subscriptions, sort)
     return templates.TemplateResponse(
@@ -295,16 +309,19 @@ async def dashboard(
             "alerts": alerts,
             "market_summary": market_summary,
             "price_movements": price_movements,
+            "ranked_cards": ranked_cards,
             "query": q.strip(),
             "search_results": search_results,
             "sort": sort,
             "rarity": rarity,
             "series": series,
+            "code": code,
             "show_name": show_name != "0",
             "show_price": show_price != "0",
             "sort_options": SORT_OPTIONS,
             "rarity_options": rarity_options,
             "series_options": series_options,
+            "code_options": code_options,
             "popular_queries": POPULAR_QUERIES,
             "display_price": display_price,
             "variant_label": variant_label,

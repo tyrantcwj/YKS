@@ -19,6 +19,12 @@
     <span class="mode-note">盒装和卡包会在单卡体验稳定后补上。</span>
   </div>
 
+  <div class="scan-row" aria-label="扫描入口">
+    <span>查询方式</span>
+    <button type="button" disabled>PSA 鉴定卡扫描</button>
+    <button type="button" disabled>裸卡扫描</button>
+  </div>
+
   <div class="quick-row" aria-label="热门宝可梦">
     <span>热门宝可梦</span>
     {% for item in popular_queries %}
@@ -65,6 +71,47 @@
   </div>
 </section>
 {% endif %}
+
+<section class="ranking-panel" aria-label="热门排行">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">点击查看排行</p>
+      <h2>热门排行</h2>
+    </div>
+    <span>按历史最高价排列</span>
+  </div>
+  <div class="ranking-grid">
+    {% for card in ranked_cards %}
+    <a class="ranking-card" href="/subscriptions/{{ card.subscription_id }}">
+      <span class="rank-no">{{ loop.index }}</span>
+      <div class="ranking-thumb">
+        {% if card.image_url %}
+        <img src="{{ card.image_url }}" alt="{{ card.title }}">
+        {% else %}
+        <span>{{ card.card_id }}</span>
+        {% endif %}
+      </div>
+      <div class="ranking-main">
+        <strong>{{ card.title }}</strong>
+        <span>{{ card.set_name or "未知系列" }} · {{ rarity_label(card.rarity) or variant_label(card.variant) }}</span>
+        <span>{{ card.sample_count }} 条记录</span>
+      </div>
+      <div class="ranking-price">
+        <span>历史最高</span>
+        <strong>
+          {% if card.historical_high is not none %}
+          {{ card.currency or "" }} {{ "%.2f"|format(card.historical_high) }}
+          {% else %}
+          暂无
+          {% endif %}
+        </strong>
+      </div>
+    </a>
+    {% else %}
+    <p class="ranking-empty">订阅并记录价格后，这里会出现你的本地热门排行。</p>
+    {% endfor %}
+  </div>
+</section>
 
 <section class="market-overview" aria-label="行情概览">
   <div class="section-head compact">
@@ -237,6 +284,15 @@
         {% endfor %}
       </select>
     </label>
+    <label>
+      <span>编号</span>
+      <input name="code" list="code-options" value="{{ code }}" placeholder="如 basep 或 swsh3-136">
+      <datalist id="code-options">
+        {% for item in code_options %}
+        <option value="{{ item }}"></option>
+        {% endfor %}
+      </datalist>
+    </label>
     <label class="switch-label">
       <input type="hidden" name="show_name" value="0">
       <input name="show_name" type="checkbox" value="1" {% if show_name %}checked{% endif %}>
@@ -278,6 +334,16 @@
           </span>
           {% endif %}
           <span>{{ provider_label(item.provider) }} · {{ variant_label(item.variant) }}</span>
+        </div>
+        <div class="card-stats">
+          <span>历史最高</span>
+          <strong>
+            {% if item.historical_high is not none %}
+            {{ item.currency or "" }} {{ "%.2f"|format(item.historical_high) }}
+            {% else %}
+            暂无
+            {% endif %}
+          </strong>
         </div>
         <form class="edit-form" action="/subscriptions/{{ item.id }}/edit" method="post">
           <input class="wide-field" name="nickname" value="{{ item.nickname }}" placeholder="备注名称">

@@ -107,5 +107,11 @@ def test_market_summary_and_recent_price_movements(tmp_path, monkeypatch):
         assert movements[0]["latest_price"] == 125.0
         assert movements[0]["previous_price"] == 100.0
         assert movements[0]["change_percent"] == 25.0
+
+        ranked = repository.ranked_cards(conn)
+        assert len(ranked) == 1
+        assert ranked[0]["title"] == "Pikachu"
+        assert ranked[0]["historical_high"] == 125.0
+        assert ranked[0]["sample_count"] == 2
     finally:
         conn.close()
