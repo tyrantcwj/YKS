@@ -57,7 +57,7 @@ def _interleave(buckets: list[list[CardSearchResult]], limit: int) -> list[CardS
     return ordered
 
 
-async def search_all(query: str, limit: int = 24) -> list[CardSearchResult]:
+async def search_all(query: str, limit: int = 120) -> list[CardSearchResult]:
     query = (query or "").strip()
     if not query:
         return []
