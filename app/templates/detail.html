@@ -30,6 +30,55 @@
   </div>
 </section>
 
+<section class="research-panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">成交参考</p>
+      <h2>外部行情查询</h2>
+    </div>
+  </div>
+  <div class="research-grid">
+    {% for link in market_links %}
+    <a href="{{ link.url }}" target="_blank" rel="noreferrer">{{ link.label }}</a>
+    {% endfor %}
+  </div>
+  <form class="manual-price-form" action="/subscriptions/{{ subscription.id }}/prices" method="post">
+    <label>
+      <span>来源</span>
+      <select name="provider">
+        <option value="manual">手动记录</option>
+        <option value="ebay">eBay</option>
+        <option value="snkrdunk">Snkrdunk</option>
+        <option value="tcgplayer">TCGplayer</option>
+        <option value="cardmarket">Cardmarket</option>
+      </select>
+    </label>
+    <label>
+      <span>币种</span>
+      <select name="currency">
+        <option value="JPY">JPY</option>
+        <option value="TWD">TWD</option>
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+        <option value="CNY">CNY</option>
+      </select>
+    </label>
+    <label>
+      <span>版本</span>
+      <select name="variant">
+        {% for option in ["normal", "holo", "reverse", "standard"] %}
+        <option value="{{ option }}" {% if subscription.variant == option %}selected{% endif %}>{{ variant_label(option) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>成交价</span>
+      <input name="market_price" type="number" min="0" step="0.01" placeholder="输入看到的成交价" required>
+    </label>
+    <button class="primary-button" type="submit">记录价格</button>
+  </form>
+</section>
+
 <section class="market-panel">
   <div class="section-head">
     <div>

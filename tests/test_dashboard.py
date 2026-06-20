@@ -161,6 +161,43 @@ def test_subscription_detail_renders_price_chart(tmp_path, monkeypatch):
     assert "2 条记录" in response.text
 
 
+def test_manual_price_entry_appears_on_detail_page(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr("app.config.settings.database_path", str(db_path))
+    init_db()
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        subscription_id = repository.create_subscription(
+            conn,
+            card_id="basep-1",
+            nickname="Pikachu",
+            variant="normal",
+            target_price=None,
+            alert_percent=None,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            f"/subscriptions/{subscription_id}/prices",
+            data={
+                "provider": "ebay",
+                "currency": "JPY",
+                "variant": "normal",
+                "market_price": "123.45",
+            },
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert "eBay" in response.text
+    assert "JPY 123.45" in response.text
+
+
 def test_update_page_renders_status(monkeypatch):
     async def fake_update_status():
         return {

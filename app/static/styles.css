@@ -561,6 +561,7 @@ button,
 }
 
 .detail-hero,
+.research-panel,
 .market-panel,
 .chart-panel {
   background: #ffffff;
@@ -641,11 +642,40 @@ button,
 }
 
 .market-grid,
-.watch-panel {
+.watch-panel,
+.research-grid,
+.manual-price-form {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   margin-bottom: 24px;
+}
+
+.research-grid a {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  font-weight: 850;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 12px;
+}
+
+.research-grid a::after {
+  content: "打开";
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.manual-price-form {
+  align-items: end;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 0;
+  padding: 12px;
 }
 
 .market-card,

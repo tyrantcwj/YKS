@@ -6,6 +6,7 @@ import tempfile
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -18,6 +19,7 @@ from app import repository
 from app.chart import build_price_chart
 from app.config import settings
 from app.db import backup_database, get_db, init_db
+from app.models import PricePoint
 from app.pricing import (
     display_price,
     run_sync_all_blocking,
@@ -45,6 +47,9 @@ VARIANT_LABELS = {
 PROVIDER_LABELS = {
     "tcgplayer": "TCGplayer",
     "cardmarket": "Cardmarket",
+    "ebay": "eBay",
+    "snkrdunk": "Snkrdunk",
+    "manual": "手动记录",
 }
 
 RARITY_LABELS = {
@@ -133,6 +138,30 @@ def money_label(row) -> str:
         return "暂无价格"
     currency = row["currency"] or ""
     return f"{currency} {price:.2f}".strip()
+
+
+def market_links(subscription) -> list[dict[str, str]]:
+    query = subscription["nickname"] or subscription["name"] or subscription["card_id"]
+    encoded = quote_plus(f"{query} pokemon card")
+    snkrdunk = quote_plus(query)
+    return [
+        {
+            "label": "eBay 已售出",
+            "url": f"https://www.ebay.com/sch/i.html?_nkw={encoded}&LH_Sold=1&LH_Complete=1",
+        },
+        {
+            "label": "Snkrdunk",
+            "url": f"https://snkrdunk.com/search/result?keyword={snkrdunk}",
+        },
+        {
+            "label": "TCGplayer",
+            "url": f"https://www.tcgplayer.com/search/pokemon/product?productLineName=pokemon&q={encoded}",
+        },
+        {
+            "label": "Cardmarket",
+            "url": f"https://www.cardmarket.com/en/Pokemon/Products/Search?searchString={encoded}",
+        },
+    ]
 
 
 def _row_price(row) -> float | None:
@@ -443,6 +472,38 @@ async def sync_one(subscription_id: int):
     return flash_redirect("/")
 
 
+@app.post("/subscriptions/{subscription_id}/prices")
+async def add_manual_price(
+    subscription_id: int,
+    provider: str = Form("manual"),
+    currency: str = Form("JPY"),
+    variant: str = Form("normal"),
+    market_price: str = Form(...),
+):
+    price = parse_optional_float(market_price)
+    if price is None:
+        raise HTTPException(status_code=400, detail="Price is required")
+    provider = provider.strip().lower() or "manual"
+    currency = currency.strip().upper() or "JPY"
+    variant = variant.strip() or "normal"
+    with get_db() as db:
+        subscription = repository.get_subscription(db, subscription_id)
+        if subscription is None:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        repository.save_price_snapshot(
+            db,
+            subscription_id,
+            subscription["card_id"],
+            PricePoint(
+                provider=provider,
+                currency=currency,
+                variant=variant,
+                market_price=price,
+            ),
+        )
+    return flash_redirect(f"/subscriptions/{subscription_id}")
+
+
 @app.post("/subscriptions/{subscription_id}/delete")
 async def delete_one(subscription_id: int):
     with get_db() as db:
@@ -466,6 +527,7 @@ async def subscription_detail(request: Request, subscription_id: int):
             "subscription": subscription,
             "history": history,
             "latest_prices": latest_prices,
+            "market_links": market_links(subscription),
             "chart": build_price_chart(history, subscription["variant"]),
             "display_price": display_price,
             "money_label": money_label,
