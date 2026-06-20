@@ -59,9 +59,20 @@ class FakeAsyncClient:
 
 
 class FakeSearchResponse:
-    status_code = 200
+    def __init__(self, locale="en"):
+        self.status_code = 200
+        self.locale = locale
 
     def json(self):
+        if self.locale == "ja":
+            return [
+                {
+                    "id": "E1-016",
+                    "localId": "016",
+                    "name": "ピカチュウ",
+                    "image": "https://assets.tcgdex.net/ja/e/e1/016",
+                }
+            ]
         return [
             {
                 "id": "basep-1",
@@ -94,7 +105,8 @@ class FakeSearchAsyncClient:
 
     async def get(self, url, params=None):
         self.calls.append({"url": url, "params": params})
-        return FakeSearchResponse()
+        locale = url.split("/v2/", 1)[1].split("/", 1)[0]
+        return FakeSearchResponse(locale)
 
 
 @pytest.mark.asyncio
@@ -126,4 +138,21 @@ async def test_search_cards_filters_by_name(monkeypatch):
     ]
     assert len(results) == 1
     assert results[0].card_id == "basep-1"
+    assert results[0].tcgdex_locale == "en"
     assert results[0].image_url == "https://assets.tcgdex.net/en/base/basep/1/low.webp"
+
+
+@pytest.mark.asyncio
+async def test_search_cards_uses_japanese_locale_for_japanese_query(monkeypatch):
+    monkeypatch.setattr(tcgdex.httpx, "AsyncClient", FakeSearchAsyncClient)
+    FakeSearchAsyncClient.calls = []
+
+    results = await search_cards("ピカチュウ", limit=1)
+
+    assert FakeSearchAsyncClient.calls[0] == {
+        "url": "https://api.tcgdex.net/v2/ja/cards",
+        "params": {"name": "ピカチュウ"},
+    }
+    assert results[0].card_id == "E1-016"
+    assert results[0].name == "ピカチュウ"
+    assert results[0].tcgdex_locale == "ja"

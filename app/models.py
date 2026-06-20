@@ -34,4 +34,5 @@ class CardSearchResult:
     card_id: str
     name: str
     image_url: str | None
+    tcgdex_locale: str
     local_id: str | None = None

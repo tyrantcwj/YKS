@@ -34,6 +34,7 @@ def init_db() -> None:
                 card_id TEXT NOT NULL UNIQUE,
                 nickname TEXT NOT NULL DEFAULT '',
                 variant TEXT NOT NULL DEFAULT 'holo',
+                tcgdex_locale TEXT NOT NULL DEFAULT '',
                 target_price REAL,
                 alert_percent REAL,
                 active INTEGER NOT NULL DEFAULT 1,
@@ -106,6 +107,7 @@ def _ensure_subscription_columns(conn: sqlite3.Connection) -> None:
     migrations = {
         "nickname": "ALTER TABLE subscriptions ADD COLUMN nickname TEXT NOT NULL DEFAULT ''",
         "variant": "ALTER TABLE subscriptions ADD COLUMN variant TEXT NOT NULL DEFAULT 'holo'",
+        "tcgdex_locale": "ALTER TABLE subscriptions ADD COLUMN tcgdex_locale TEXT NOT NULL DEFAULT ''",
         "target_price": "ALTER TABLE subscriptions ADD COLUMN target_price REAL",
         "alert_percent": "ALTER TABLE subscriptions ADD COLUMN alert_percent REAL",
         "active": "ALTER TABLE subscriptions ADD COLUMN active INTEGER NOT NULL DEFAULT 1",

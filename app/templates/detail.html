@@ -4,7 +4,7 @@
   <a href="/">返回首页</a>
   <div>
     <h1>{{ subscription.nickname or subscription.card_id }}</h1>
-    <p>{{ subscription.card_id }} / {{ variant_label(subscription.variant) }}</p>
+    <p>{{ subscription.card_id }} / {{ variant_label(subscription.variant) }} / {{ locale_label(subscription.tcgdex_locale) }}</p>
   </div>
   <form action="/subscriptions/{{ subscription.id }}/sync" method="post">
     <button class="primary-button">立即同步</button>

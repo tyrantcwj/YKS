@@ -4,7 +4,7 @@
   <form class="search-form" action="/" method="get">
     <label>
       <span>搜索卡片</span>
-      <input name="q" value="{{ query }}" placeholder="输入英文卡名，例如 pikachu、charizard">
+      <input name="q" value="{{ query }}" placeholder="可输入中文、日文或英文，例如 皮卡丘、ピカチュウ、pikachu">
     </label>
     <button class="primary-button" type="submit">搜索</button>
   </form>
@@ -22,12 +22,13 @@
       </div>
       <div>
         <strong>{{ result.name }}</strong>
-        <span>{{ result.card_id }}</span>
+        <span>{{ result.card_id }} · {{ locale_label(result.tcgdex_locale) }}</span>
       </div>
       <form action="/subscriptions" method="post">
         <input type="hidden" name="card_id" value="{{ result.card_id }}">
         <input type="hidden" name="nickname" value="{{ result.name }}">
         <input type="hidden" name="variant" value="normal">
+        <input type="hidden" name="tcgdex_locale" value="{{ result.tcgdex_locale }}">
         <button type="submit">订阅</button>
       </form>
     </article>
@@ -53,6 +54,14 @@
         <option value="normal">普通</option>
         <option value="reverse">反闪</option>
         <option value="standard">标准</option>
+      </select>
+    </label>
+    <label>
+      <span>语言</span>
+      <select name="tcgdex_locale">
+        {% for locale, label in search_locale_options %}
+        <option value="{{ locale }}" {% if locale == settings.tcgdex_locale %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
       </select>
     </label>
     <label>
@@ -94,7 +103,7 @@
       <div class="card-head">
         <div>
           <h2>{{ item.nickname or item.name or item.card_id }}</h2>
-          <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }}</p>
+          <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }} · {{ locale_label(item.tcgdex_locale) }}</p>
         </div>
         <span class="status">{{ "启用" if item.active else "停用" }}</span>
       </div>

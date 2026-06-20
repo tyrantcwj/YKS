@@ -77,7 +77,7 @@ async def sync_subscription(subscription_id: int) -> None:
             return
         card_id = subscription["card_id"]
 
-    payload = await fetch_card(card_id)
+    payload = await fetch_card(card_id, subscription["tcgdex_locale"] or None)
 
     notifications: list[AlertNotification] = []
     with get_db() as db:

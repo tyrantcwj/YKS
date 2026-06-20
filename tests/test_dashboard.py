@@ -19,6 +19,7 @@ def test_dashboard_renders_search_results(tmp_path, monkeypatch):
                 card_id="basep-1",
                 name="Pikachu",
                 image_url="https://assets.tcgdex.net/en/base/basep/1/low.webp",
+                tcgdex_locale="en",
                 local_id="1",
             )
         ]

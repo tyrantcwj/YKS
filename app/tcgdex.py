@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 
 import httpx
@@ -9,6 +10,15 @@ from app.models import CardPayload, CardSearchResult, PricePoint
 
 class CardNotFoundError(ValueError):
     pass
+
+
+SUPPORTED_SEARCH_LOCALES = ("en", "ja", "zh-tw", "zh-cn")
+LOCALE_LABELS = {
+    "en": "英文",
+    "ja": "日文",
+    "zh-tw": "繁中",
+    "zh-cn": "简中",
+}
 
 
 def _as_float(value: Any) -> float | None:
@@ -101,8 +111,31 @@ def _cardmarket_prices(pricing: dict[str, Any]) -> list[PricePoint]:
     return prices
 
 
-async def fetch_card(card_id: str) -> CardPayload:
-    url = f"https://api.tcgdex.net/v2/{settings.tcgdex_locale}/cards/{card_id}"
+def _safe_locale(locale: str | None) -> str:
+    locale = (locale or settings.tcgdex_locale).strip().lower()
+    return locale if locale else settings.tcgdex_locale
+
+
+def _search_locales(query: str) -> list[str]:
+    candidates: list[str]
+    if re.search(r"[\u3040-\u30ff]", query):
+        candidates = ["ja", "zh-tw", "zh-cn", "en"]
+    elif re.search(r"[\u4e00-\u9fff]", query):
+        candidates = ["zh-tw", "zh-cn", "ja", "en"]
+    else:
+        candidates = [settings.tcgdex_locale, "en"]
+
+    locales: list[str] = []
+    for locale in candidates:
+        normalized = _safe_locale(locale)
+        if normalized in SUPPORTED_SEARCH_LOCALES and normalized not in locales:
+            locales.append(normalized)
+    return locales or [settings.tcgdex_locale]
+
+
+async def fetch_card(card_id: str, locale: str | None = None) -> CardPayload:
+    locale = _safe_locale(locale)
+    url = f"https://api.tcgdex.net/v2/{locale}/cards/{card_id}"
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
         response = await client.get(url)
 
@@ -130,25 +163,38 @@ async def search_cards(query: str, limit: int = 12) -> list[CardSearchResult]:
     if not query:
         return []
 
-    url = f"https://api.tcgdex.net/v2/{settings.tcgdex_locale}/cards"
+    locales = _search_locales(query)
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
-        response = await client.get(url, params={"name": query})
-    response.raise_for_status()
-
-    cards = response.json()
-    if not isinstance(cards, list):
-        return []
+        responses = []
+        for locale in locales:
+            url = f"https://api.tcgdex.net/v2/{locale}/cards"
+            response = await client.get(url, params={"name": query})
+            if response.status_code == 404:
+                continue
+            response.raise_for_status()
+            responses.append((locale, response.json()))
 
     results: list[CardSearchResult] = []
-    for card in cards[:limit]:
-        if not isinstance(card, dict) or not card.get("id"):
+    seen: set[tuple[str, str]] = set()
+    for locale, cards in responses:
+        if not isinstance(cards, list):
             continue
-        results.append(
-            CardSearchResult(
-                card_id=str(card["id"]),
-                name=str(card.get("name") or card["id"]),
-                image_url=_brief_image_url(card),
-                local_id=str(card["localId"]) if card.get("localId") is not None else None,
+        for card in cards:
+            if not isinstance(card, dict) or not card.get("id"):
+                continue
+            key = (locale, str(card["id"]))
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(
+                CardSearchResult(
+                    card_id=str(card["id"]),
+                    name=str(card.get("name") or card["id"]),
+                    image_url=_brief_image_url(card),
+                    tcgdex_locale=locale,
+                    local_id=str(card["localId"]) if card.get("localId") is not None else None,
+                )
             )
-        )
+            if len(results) >= limit:
+                return results
     return results

@@ -46,21 +46,23 @@ def create_subscription(
     variant: str,
     target_price: float | None,
     alert_percent: float | None,
+    tcgdex_locale: str = "",
 ) -> int:
     cursor = db.execute(
         """
-        INSERT INTO subscriptions (card_id, nickname, variant, target_price, alert_percent)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO subscriptions (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(card_id) DO UPDATE SET
             nickname = excluded.nickname,
             variant = excluded.variant,
+            tcgdex_locale = excluded.tcgdex_locale,
             target_price = excluded.target_price,
             alert_percent = excluded.alert_percent,
             active = 1,
             updated_at = CURRENT_TIMESTAMP
         RETURNING id
         """,
-        (card_id, nickname, variant, target_price, alert_percent),
+        (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale),
     )
     return int(cursor.fetchone()["id"])
 
@@ -233,6 +235,7 @@ def export_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
             COALESCE(NULLIF(s.nickname, ''), c.name, s.card_id) AS title,
             s.nickname,
             s.variant,
+            s.tcgdex_locale,
             s.target_price,
             s.alert_percent,
             s.active,

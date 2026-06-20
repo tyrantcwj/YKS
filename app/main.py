@@ -25,6 +25,7 @@ from app.pricing import (
     sync_subscription,
 )
 from app.tcgdex import search_cards
+from app.tcgdex import LOCALE_LABELS
 from app.updater import apply_update, read_build_info, update_status
 
 scheduler = BackgroundScheduler()
@@ -63,6 +64,13 @@ UPDATE_MODE_LABELS = {
     "disabled": "已禁用",
 }
 
+SEARCH_LOCALE_OPTIONS = [
+    ("en", "英文"),
+    ("ja", "日文"),
+    ("zh-tw", "繁中"),
+    ("zh-cn", "简中"),
+]
+
 
 def variant_label(value: str | None) -> str:
     if not value:
@@ -87,6 +95,12 @@ def update_mode_label(value: str | None) -> str:
     if not value:
         return "未知"
     return UPDATE_MODE_LABELS.get(value, value)
+
+
+def locale_label(value: str | None) -> str:
+    if not value:
+        return LOCALE_LABELS.get(settings.tcgdex_locale, settings.tcgdex_locale)
+    return LOCALE_LABELS.get(value, value)
 
 
 def parse_optional_float(value: str | None) -> float | None:
@@ -183,6 +197,8 @@ async def dashboard(request: Request, q: str = ""):
             "variant_label": variant_label,
             "provider_label": provider_label,
             "rarity_label": rarity_label,
+            "locale_label": locale_label,
+            "search_locale_options": SEARCH_LOCALE_OPTIONS,
         },
     )
 
@@ -294,6 +310,7 @@ async def add_subscription(
     card_id: str = Form(...),
     nickname: str = Form(""),
     variant: str = Form("holo"),
+    tcgdex_locale: str = Form(""),
     target_price: str = Form(""),
     alert_percent: str = Form(""),
 ):
@@ -309,6 +326,7 @@ async def add_subscription(
             variant=variant,
             target_price=parse_optional_float(target_price),
             alert_percent=parse_optional_float(alert_percent),
+            tcgdex_locale=tcgdex_locale.strip() or settings.tcgdex_locale,
         )
 
     await sync_subscription(subscription_id)
@@ -371,6 +389,7 @@ async def subscription_detail(request: Request, subscription_id: int):
             "variant_label": variant_label,
             "provider_label": provider_label,
             "rarity_label": rarity_label,
+            "locale_label": locale_label,
         },
     )
 
