@@ -113,5 +113,15 @@ def test_market_summary_and_recent_price_movements(tmp_path, monkeypatch):
         assert ranked[0]["title"] == "Pikachu"
         assert ranked[0]["historical_high"] == 125.0
         assert ranked[0]["sample_count"] == 2
+
+        stats = repository.provider_market_stats(conn, subscription_id)
+        assert len(stats) == 1
+        assert stats[0]["provider"] == "manual"
+        assert stats[0]["currency"] == "JPY"
+        assert stats[0]["latest_price"] == 125.0
+        assert stats[0]["low_price"] == 100.0
+        assert stats[0]["high_price"] == 125.0
+        assert stats[0]["average_price"] == 112.5
+        assert stats[0]["sample_count"] == 2
     finally:
         conn.close()

@@ -249,6 +249,59 @@ def latest_prices_by_subscription(db: sqlite3.Connection, subscription_id: int) 
     ).fetchall()
 
 
+def provider_market_stats(db: sqlite3.Connection, subscription_id: int) -> list[sqlite3.Row]:
+    return db.execute(
+        """
+        WITH priced AS (
+            SELECT
+                ps.*,
+                COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) AS display_price
+            FROM price_snapshots ps
+            WHERE ps.subscription_id = ?
+        ),
+        latest AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY provider, currency, variant
+                    ORDER BY snapshot_at DESC, id DESC
+                ) AS rank
+            FROM priced
+            WHERE display_price IS NOT NULL
+        )
+        SELECT
+            p.provider,
+            p.currency,
+            p.variant,
+            COUNT(p.display_price) AS sample_count,
+            MIN(p.display_price) AS low_price,
+            MAX(p.display_price) AS high_price,
+            AVG(p.display_price) AS average_price,
+            l.display_price AS latest_price,
+            l.snapshot_at AS latest_snapshot_at
+        FROM priced p
+        JOIN latest l ON l.provider = p.provider
+            AND l.currency = p.currency
+            AND l.variant = p.variant
+            AND l.rank = 1
+        WHERE p.display_price IS NOT NULL
+        GROUP BY p.provider, p.currency, p.variant
+        ORDER BY
+            CASE p.provider
+                WHEN 'snkrdunk' THEN 0
+                WHEN 'ebay' THEN 1
+                WHEN 'manual' THEN 2
+                WHEN 'tcgplayer' THEN 3
+                WHEN 'cardmarket' THEN 4
+                ELSE 5
+            END,
+            p.variant,
+            p.currency
+        """,
+        (subscription_id,),
+    ).fetchall()
+
+
 def market_summary(db: sqlite3.Connection) -> sqlite3.Row:
     return db.execute(
         """

@@ -540,6 +540,7 @@ async def subscription_detail(request: Request, subscription_id: int):
             raise HTTPException(status_code=404, detail="Subscription not found")
         history = repository.recent_prices(db, subscription_id, limit=80)
         latest_prices = repository.latest_prices_by_subscription(db, subscription_id)
+        provider_stats = repository.provider_market_stats(db, subscription_id)
     return templates.TemplateResponse(
         request,
         "detail.html",
@@ -548,6 +549,7 @@ async def subscription_detail(request: Request, subscription_id: int):
             "subscription": subscription,
             "history": history,
             "latest_prices": latest_prices,
+            "provider_stats": provider_stats,
             "market_links": market_links(subscription),
             "chart": build_price_chart(history, subscription["variant"]),
             "display_price": display_price,

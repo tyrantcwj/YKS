@@ -79,6 +79,35 @@
   </form>
 </section>
 
+<section class="deal-panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">成交行情</p>
+      <h2>分平台成交参考</h2>
+    </div>
+    <span>{{ provider_stats|length }} 组行情</span>
+  </div>
+  <div class="deal-grid">
+    {% for stat in provider_stats %}
+    <article class="deal-card">
+      <div class="deal-head">
+        <span>{{ provider_label(stat.provider) }}</span>
+        <strong>{{ stat.currency }} {{ "%.2f"|format(stat.latest_price) }}</strong>
+      </div>
+      <p>{{ variant_label(stat.variant) }} · 最新记录 {{ stat.latest_snapshot_at }}</p>
+      <dl>
+        <div><dt>样本数</dt><dd>{{ stat.sample_count }}</dd></div>
+        <div><dt>均价</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.average_price) }}</dd></div>
+        <div><dt>最低</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.low_price) }}</dd></div>
+        <div><dt>最高</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.high_price) }}</dd></div>
+      </dl>
+    </article>
+    {% else %}
+    <p class="search-empty">还没有成交记录。先从 eBay 或 Snkrdunk 查到成交价后记录进来，这里会自动汇总。</p>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="market-panel">
   <div class="section-head">
     <div>

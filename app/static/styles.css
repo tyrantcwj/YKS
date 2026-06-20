@@ -827,6 +827,7 @@ button,
 
 .detail-hero,
 .research-panel,
+.deal-panel,
 .market-panel,
 .chart-panel {
   background: #ffffff;
@@ -893,6 +894,7 @@ button,
 }
 
 .detail-tags span,
+.deal-head span,
 .market-card > div span {
   background: #f1f4f8;
   border-radius: 999px;
@@ -907,6 +909,7 @@ button,
 }
 
 .market-grid,
+.deal-grid,
 .watch-panel,
 .research-grid,
 .manual-price-form {
@@ -944,6 +947,7 @@ button,
 }
 
 .market-card,
+.deal-card,
 .watch-card {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -958,19 +962,29 @@ button,
   justify-content: space-between;
 }
 
+.deal-head {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
 .market-card strong,
+.deal-card strong,
 .watch-card strong {
   display: block;
   font-size: 22px;
   overflow-wrap: anywhere;
 }
 
+.deal-card p,
 .market-card p {
   color: var(--muted);
   font-size: 12px;
   margin: 10px 0 0;
 }
 
+.deal-card dl,
 .market-card dl {
   display: grid;
   gap: 8px;
@@ -978,11 +992,13 @@ button,
   margin: 14px 0 0;
 }
 
+.deal-card dl div,
 .market-card dl div {
   border-top: 1px solid var(--line);
   padding-top: 8px;
 }
 
+.deal-card dt,
 .market-card dt,
 .watch-card span {
   color: var(--muted);
@@ -990,6 +1006,7 @@ button,
   font-weight: 800;
 }
 
+.deal-card dd,
 .market-card dd {
   margin: 3px 0 0;
 }

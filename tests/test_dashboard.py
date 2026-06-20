@@ -232,6 +232,9 @@ def test_manual_price_entry_appears_on_detail_page(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert "eBay" in response.text
     assert "JPY 123.45" in response.text
+    assert "分平台成交参考" in response.text
+    assert "样本数" in response.text
+    assert "均价" in response.text
 
 
 def test_update_page_renders_status(monkeypatch):
