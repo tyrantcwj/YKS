@@ -560,20 +560,143 @@ button,
   text-align: center;
 }
 
-.detail-head {
-  align-items: center;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: auto 1fr auto;
-  margin-bottom: 24px;
-}
-
+.detail-hero,
+.market-panel,
 .chart-panel {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
   margin-bottom: 24px;
   padding: 16px;
+}
+
+.back-link {
+  display: inline-flex;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.detail-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.detail-cover {
+  align-items: center;
+  background: #e9eef6;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.detail-cover img {
+  max-height: 292px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.detail-cover span {
+  color: var(--muted);
+  font-weight: 850;
+  padding: 16px;
+  text-align: center;
+}
+
+.detail-copy h1 {
+  font-size: 32px;
+  line-height: 1.15;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.detail-tags span,
+.market-card > div span {
+  background: #f1f4f8;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.detail-actions {
+  margin-top: 18px;
+}
+
+.market-grid,
+.watch-panel {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 24px;
+}
+
+.market-card,
+.watch-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.market-card > div {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.market-card strong,
+.watch-card strong {
+  display: block;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.market-card p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+.market-card dl {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 14px 0 0;
+}
+
+.market-card dl div {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.market-card dt,
+.watch-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.market-card dd {
+  margin: 3px 0 0;
 }
 
 .update-panel {
@@ -712,8 +835,7 @@ th {
   .subscribe-form,
   .search-form,
   .edit-form,
-  .alert,
-  .detail-head {
+  .alert {
     grid-template-columns: 1fr;
   }
 
@@ -754,5 +876,13 @@ th {
 
   .image-link img {
     height: 210px;
+  }
+
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-cover {
+    min-height: 260px;
   }
 }

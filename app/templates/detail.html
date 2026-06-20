@@ -1,14 +1,77 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="detail-head">
-  <a href="/">返回首页</a>
-  <div>
-    <h1>{{ subscription.nickname or subscription.card_id }}</h1>
-    <p>{{ subscription.card_id }} / {{ variant_label(subscription.variant) }} / {{ locale_label(subscription.tcgdex_locale) }}</p>
+<section class="detail-hero">
+  <a class="back-link" href="/">返回查询</a>
+  <div class="detail-layout">
+    <div class="detail-cover">
+      {% if subscription.image_url %}
+      <img src="{{ subscription.image_url }}" alt="{{ subscription.name or subscription.card_id }}">
+      {% else %}
+      <span>{{ subscription.card_id }}</span>
+      {% endif %}
+    </div>
+    <div class="detail-copy">
+      <p class="eyebrow">单卡行情</p>
+      <h1>{{ subscription.nickname or subscription.name or subscription.card_id }}</h1>
+      <p class="detail-meta">
+        {{ subscription.card_id }} · {{ subscription.set_name or "未知系列" }} ·
+        {{ rarity_label(subscription.rarity) or variant_label(subscription.variant) }} ·
+        {{ locale_label(subscription.tcgdex_locale) }}
+      </p>
+      <div class="detail-tags">
+        <span>{{ "启用追踪" if subscription.active else "已停用" }}</span>
+        <span>{{ variant_label(subscription.variant) }}</span>
+        <span>上次同步：{{ subscription.last_synced_at or "从未同步" }}</span>
+      </div>
+      <form action="/subscriptions/{{ subscription.id }}/sync" method="post" class="detail-actions">
+        <button class="primary-button">立即同步</button>
+      </form>
+    </div>
   </div>
-  <form action="/subscriptions/{{ subscription.id }}/sync" method="post">
-    <button class="primary-button">立即同步</button>
-  </form>
+</section>
+
+<section class="market-panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">最新行情</p>
+      <h2>价格来源与版本</h2>
+    </div>
+    <span>{{ latest_prices|length }} 条来源记录</span>
+  </div>
+  <div class="market-grid">
+    {% for row in latest_prices %}
+    <article class="market-card">
+      <div>
+        <span>{{ provider_label(row.provider) }}</span>
+        <strong>{{ money_label(row) }}</strong>
+      </div>
+      <p>{{ variant_label(row.variant) }} · {{ row.snapshot_at }}</p>
+      <dl>
+        <div><dt>低价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.low_price) if row.low_price is not none else "-" }}</dd></div>
+        <div><dt>中位价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.mid_price) if row.mid_price is not none else "-" }}</dd></div>
+        <div><dt>高价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.high_price) if row.high_price is not none else "-" }}</dd></div>
+        <div><dt>趋势价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.trend_price) if row.trend_price is not none else "-" }}</dd></div>
+      </dl>
+    </article>
+    {% else %}
+    <p class="search-empty">还没有价格来源记录。可以先点击“立即同步”。</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="watch-panel">
+  <div class="watch-card">
+    <span>目标价</span>
+    <strong>{{ subscription.target_price if subscription.target_price is not none else "未设置" }}</strong>
+  </div>
+  <div class="watch-card">
+    <span>涨跌提醒</span>
+    <strong>{{ (subscription.alert_percent ~ "%") if subscription.alert_percent is not none else "未设置" }}</strong>
+  </div>
+  <div class="watch-card">
+    <span>当前追踪版本</span>
+    <strong>{{ variant_label(subscription.variant) }}</strong>
+  </div>
 </section>
 
 <section class="chart-panel">
@@ -34,6 +97,12 @@
 </section>
 
 <section class="history">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">历史记录</p>
+      <h2>同步快照</h2>
+    </div>
+  </div>
   <table>
     <thead>
       <tr>
@@ -48,12 +117,11 @@
     </thead>
     <tbody>
       {% for row in history %}
-      {% set price = display_price(row) %}
       <tr>
         <td>{{ row.snapshot_at }}</td>
         <td>{{ provider_label(row.provider) }}</td>
         <td>{{ variant_label(row.variant) }}</td>
-        <td>{% if price is not none %}{{ row.currency }} {{ "%.2f"|format(price) }}{% endif %}</td>
+        <td>{{ money_label(row) }}</td>
         <td>{{ row.low_price or "" }}</td>
         <td>{{ row.mid_price or "" }}</td>
         <td>{{ row.high_price or "" }}</td>

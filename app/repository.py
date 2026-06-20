@@ -93,7 +93,18 @@ def delete_subscription(db: sqlite3.Connection, subscription_id: int) -> None:
 
 def get_subscription(db: sqlite3.Connection, subscription_id: int) -> sqlite3.Row | None:
     return db.execute(
-        "SELECT * FROM subscriptions WHERE id = ?",
+        """
+        SELECT
+            s.*,
+            c.name,
+            c.image_url,
+            c.set_name,
+            c.rarity,
+            c.last_synced_at
+        FROM subscriptions s
+        LEFT JOIN cards c ON c.card_id = s.card_id
+        WHERE s.id = ?
+        """,
         (subscription_id,),
     ).fetchone()
 
@@ -203,6 +214,29 @@ def previous_price_for_variant(
         """,
         (subscription_id, variant),
     ).fetchone()
+
+
+def latest_prices_by_subscription(db: sqlite3.Connection, subscription_id: int) -> list[sqlite3.Row]:
+    return db.execute(
+        """
+        SELECT ps.*
+        FROM price_snapshots ps
+        JOIN (
+            SELECT provider, currency, variant, MAX(id) AS latest_id
+            FROM price_snapshots
+            WHERE subscription_id = ?
+            GROUP BY provider, currency, variant
+        ) latest ON latest.latest_id = ps.id
+        ORDER BY
+            CASE ps.provider
+                WHEN 'tcgplayer' THEN 0
+                WHEN 'cardmarket' THEN 1
+                ELSE 2
+            END,
+            ps.variant
+        """,
+        (subscription_id,),
+    ).fetchall()
 
 
 def create_alert(db: sqlite3.Connection, subscription_id: int, kind: str, message: str) -> None:

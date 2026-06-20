@@ -127,6 +127,14 @@ def parse_optional_float(value: str | None) -> float | None:
     return float(value)
 
 
+def money_label(row) -> str:
+    price = display_price(row)
+    if price is None:
+        return "暂无价格"
+    currency = row["currency"] or ""
+    return f"{currency} {price:.2f}".strip()
+
+
 def _row_price(row) -> float | None:
     return display_price(row)
 
@@ -449,6 +457,7 @@ async def subscription_detail(request: Request, subscription_id: int):
         if subscription is None:
             raise HTTPException(status_code=404, detail="Subscription not found")
         history = repository.recent_prices(db, subscription_id, limit=80)
+        latest_prices = repository.latest_prices_by_subscription(db, subscription_id)
     return templates.TemplateResponse(
         request,
         "detail.html",
@@ -456,8 +465,10 @@ async def subscription_detail(request: Request, subscription_id: int):
             "settings": settings,
             "subscription": subscription,
             "history": history,
+            "latest_prices": latest_prices,
             "chart": build_price_chart(history, subscription["variant"]),
             "display_price": display_price,
+            "money_label": money_label,
             "variant_label": variant_label,
             "provider_label": provider_label,
             "rarity_label": rarity_label,
