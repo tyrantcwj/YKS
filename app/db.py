@@ -38,6 +38,7 @@ def init_db() -> None:
                 target_price REAL,
                 alert_percent REAL,
                 active INTEGER NOT NULL DEFAULT 1,
+                last_sync_error TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -65,6 +66,9 @@ def init_db() -> None:
                 high_price REAL,
                 direct_price REAL,
                 trend_price REAL,
+                avg1_price REAL,
+                avg7_price REAL,
+                avg30_price REAL,
                 snapshot_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
             );
@@ -87,6 +91,7 @@ def init_db() -> None:
             """
         )
         _ensure_subscription_columns(db)
+        _ensure_snapshot_columns(db)
 
 
 def backup_database(destination: Path) -> None:
@@ -111,8 +116,24 @@ def _ensure_subscription_columns(conn: sqlite3.Connection) -> None:
         "target_price": "ALTER TABLE subscriptions ADD COLUMN target_price REAL",
         "alert_percent": "ALTER TABLE subscriptions ADD COLUMN alert_percent REAL",
         "active": "ALTER TABLE subscriptions ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
+        "last_sync_error": "ALTER TABLE subscriptions ADD COLUMN last_sync_error TEXT NOT NULL DEFAULT ''",
         "created_at": "ALTER TABLE subscriptions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
         "updated_at": "ALTER TABLE subscriptions ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
+    }
+    for column, statement in migrations.items():
+        if column not in columns:
+            conn.execute(statement)
+
+
+def _ensure_snapshot_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(price_snapshots)").fetchall()
+    }
+    migrations = {
+        "avg1_price": "ALTER TABLE price_snapshots ADD COLUMN avg1_price REAL",
+        "avg7_price": "ALTER TABLE price_snapshots ADD COLUMN avg7_price REAL",
+        "avg30_price": "ALTER TABLE price_snapshots ADD COLUMN avg30_price REAL",
     }
     for column, statement in migrations.items():
         if column not in columns:

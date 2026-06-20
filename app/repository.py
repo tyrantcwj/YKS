@@ -29,8 +29,9 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
             SELECT ps.id
             FROM price_snapshots ps
             WHERE ps.subscription_id = s.id
-              AND ps.variant = s.variant
+              AND COALESCE(ps.market_price, ps.trend_price, ps.mid_price, ps.low_price) IS NOT NULL
             ORDER BY
+                (ps.variant = s.variant) DESC,
                 ps.snapshot_at DESC,
                 ps.id DESC
             LIMIT 1
@@ -38,12 +39,10 @@ def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
         LEFT JOIN (
             SELECT
                 subscription_id,
-                variant,
                 MAX(COALESCE(market_price, trend_price, mid_price, low_price)) AS historical_high
             FROM price_snapshots
-            GROUP BY subscription_id, variant
+            GROUP BY subscription_id
         ) history ON history.subscription_id = s.id
-            AND history.variant = s.variant
         ORDER BY s.active DESC, s.updated_at DESC, s.id DESC
         """
     ).fetchall()
@@ -99,6 +98,13 @@ def update_subscription(
 
 def delete_subscription(db: sqlite3.Connection, subscription_id: int) -> None:
     db.execute("DELETE FROM subscriptions WHERE id = ?", (subscription_id,))
+
+
+def set_sync_error(db: sqlite3.Connection, subscription_id: int, message: str) -> None:
+    db.execute(
+        "UPDATE subscriptions SET last_sync_error = ? WHERE id = ?",
+        (message[:500], subscription_id),
+    )
 
 
 def get_subscription(db: sqlite3.Connection, subscription_id: int) -> sqlite3.Row | None:
@@ -159,9 +165,10 @@ def save_price_snapshot(
         """
         INSERT INTO price_snapshots (
             subscription_id, card_id, provider, currency, variant, market_price,
-            low_price, mid_price, high_price, direct_price, trend_price
+            low_price, mid_price, high_price, direct_price, trend_price,
+            avg1_price, avg7_price, avg30_price
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             subscription_id,
@@ -175,6 +182,9 @@ def save_price_snapshot(
             price.high_price,
             price.direct_price,
             price.trend_price,
+            price.avg1_price,
+            price.avg7_price,
+            price.avg30_price,
         ),
     )
 

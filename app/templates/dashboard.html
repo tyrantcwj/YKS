@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+{% if sync_error_count %}
+<div class="banner banner-error">
+  <strong>有 {{ sync_error_count }} 张卡片同步失败</strong>
+  <span>常见原因：Docker 主机无法访问 api.tcgdex.net（网络/代理），或卡片 ID 不存在。点开对应卡片可看到具体错误。若是网络被墙，可在 compose 里设置 <code>TCGDEX_API_BASE</code> 指向可用的代理/镜像。</span>
+</div>
+{% endif %}
 <section class="search-hero">
   <div class="hero-copy">
     <p class="eyebrow">PTCG 卡牌价格查询</p>
@@ -209,8 +215,8 @@
     <label>
       <span>版本</span>
       <select name="variant">
-        <option value="holo">闪卡</option>
         <option value="normal">普通</option>
+        <option value="holo">闪卡</option>
         <option value="reverse">反闪</option>
         <option value="standard">标准</option>
       </select>
@@ -363,6 +369,9 @@
           <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">删除</button></form>
         </div>
         <p class="meta">上次同步：{{ item.last_synced_at or "从未同步" }}</p>
+        {% if item.last_sync_error %}
+        <p class="card-error" title="{{ item.last_sync_error }}">⚠ {{ item.last_sync_error }}</p>
+        {% endif %}
       </div>
     </article>
     {% else %}

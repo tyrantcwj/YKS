@@ -12,6 +12,9 @@ class PricePoint:
     high_price: float | None = None
     direct_price: float | None = None
     trend_price: float | None = None
+    avg1_price: float | None = None
+    avg7_price: float | None = None
+    avg30_price: float | None = None
 
     @property
     def display_price(self) -> float | None:

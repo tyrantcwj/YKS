@@ -70,21 +70,41 @@ def _alert_for_thresholds(
     return notifications
 
 
-async def sync_subscription(subscription_id: int) -> None:
+async def sync_subscription(subscription_id: int) -> bool:
+    """Sync one subscription. Returns True on success.
+
+    Network/API failures are recorded on the subscription instead of raising,
+    so the web request that triggered the sync still completes cleanly.
+    """
     with get_db() as db:
         subscription = repository.get_subscription(db, subscription_id)
         if subscription is None:
-            return
+            return False
         card_id = subscription["card_id"]
+        locale = subscription["tcgdex_locale"] or None
 
-    payload = await fetch_card(card_id, subscription["tcgdex_locale"] or None)
+    try:
+        payload = await fetch_card(card_id, locale)
+    except CardNotFoundError:
+        message = f"TCGdex 找不到卡片 {card_id}，请确认卡片 ID 是否正确。"
+        logger.warning("Card %s was not found", card_id)
+        with get_db() as db:
+            repository.set_sync_error(db, subscription_id, message)
+        return False
+    except Exception as exc:  # noqa: BLE001 - surface any sync failure to the UI
+        message = f"同步失败：{exc.__class__.__name__}: {exc}"
+        logger.exception("Failed to sync card %s", card_id)
+        with get_db() as db:
+            repository.set_sync_error(db, subscription_id, message)
+        return False
 
     notifications: list[AlertNotification] = []
     with get_db() as db:
         subscription = repository.get_subscription(db, subscription_id)
         if subscription is None:
-            return
+            return False
         repository.save_card_payload(db, subscription_id, payload)
+        repository.set_sync_error(db, subscription_id, "")
         latest = repository.latest_price_for_variant(
             db,
             subscription_id,
@@ -98,6 +118,7 @@ async def sync_subscription(subscription_id: int) -> None:
         notifications = _alert_for_thresholds(db, subscription, latest, previous)
 
     await send_alert_notifications(notifications)
+    return True
 
 
 async def sync_all_subscriptions() -> None:
@@ -107,8 +128,6 @@ async def sync_all_subscriptions() -> None:
     for subscription in subscriptions:
         try:
             await sync_subscription(subscription["id"])
-        except CardNotFoundError:
-            logger.warning("Card %s was not found", subscription["card_id"])
         except Exception:
             logger.exception("Failed to sync card %s", subscription["card_id"])
 

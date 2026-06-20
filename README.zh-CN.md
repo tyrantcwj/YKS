@@ -24,17 +24,62 @@
 
 ## 文件说明
 
-- `docker-compose.yml`: NAS / 本地 Docker 免构建编排文件
-- `Dockerfile`: 本地手动构建镜像时使用
+- `docker-compose.yml`: 即开即用的构建编排文件（依赖打包进镜像，秒开）
+- `Dockerfile`: 构建镜像用，依赖在构建时安装
 - `.env.example`: 配置示例
 - `app/`: FastAPI 应用
 - `scripts/smoke-docker.ps1`: Docker 部署自检脚本
 - `docker/yks-entrypoint.sh`: 容器内循环启动脚本，用于在线更新后自动重启服务
 - `tests/`: 单元和路由测试
 
-## 完整 Docker 编排文件
+## 部署方式一：即开即用（推荐）
 
-下面这份是给群晖、威联通、1Panel、CasaOS、Docker Compose 项目等图形界面用的免构建版本。它不使用 `build: .`，所以不会要求面板上传源码构建上下文。
+推荐用仓库自带的 `docker-compose.yml` 直接构建镜像。依赖在构建时就装进镜像，**启动时不会再下载一堆环境**，容器名也是 `yks` 而不是 `python`。
+
+```powershell
+git clone https://github.com/tyrantcwj/YKS.git
+cd YKS
+docker compose up -d --build
+```
+
+只有第一次 `--build` 会花一两分钟装依赖；之后启动是秒开。打开 `http://<主机IP>:8000` 即可。
+
+仓库里的 `docker-compose.yml` 就是这份：
+
+```yaml
+services:
+  yks:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yks:latest
+    container_name: yks
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: "宝可梦卡价格订阅"
+      DATABASE_PATH: "/data/app.db"
+      SYNC_INTERVAL_MINUTES: "360"
+      TCGDEX_LOCALE: "en"
+      AUTH_USERNAME: "${AUTH_USERNAME:-admin}"
+      AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
+      YKS_UPDATE_MODE: "${YKS_UPDATE_MODE:-auto}"
+      YKS_UPDATE_REPO: "${YKS_UPDATE_REPO:-tyrantcwj/YKS}"
+      YKS_UPDATE_BRANCH: "${YKS_UPDATE_BRANCH:-main}"
+      YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
+    volumes:
+      - yks-data:/data
+
+volumes:
+  yks-data:
+```
+
+> 如果你之前用的是下面“方式二”那份编排（镜像显示成 `python`、每次启动都在下载依赖），先 `docker compose down` 删掉旧容器，再用本节的方式重新 `up -d --build` 一次即可彻底解决。
+
+## 部署方式二：免构建（仅当面板不能 build 时）
+
+下面这份是给群晖、威联通、1Panel、CasaOS 等**不方便上传构建上下文**的图形界面用的免构建版本。它用 `python:3.12-slim` 基础镜像，第一次启动会下载源码并安装依赖（所以会慢、镜像名是 python），能用但不如方式一干净。**能用方式一就别用这份。**
 
 保存为 `docker-compose.yml`，或者直接粘贴到容器管理器的项目编排里：
 
@@ -155,9 +200,7 @@ volumes:
 - 安装 Python 依赖
 - 启动网站
 
-第一次启动会比普通镜像慢一点，后面重启会复用已经克隆好的代码 volume。
-
-如果日志里还出现 `apt-get` 或 `git clone`，说明项目仍在使用旧编排。需要删除旧项目/容器后，用本节最新编排重新创建。
+第一次启动会比普通镜像慢一点，后面重启会复用已经克隆好的代码 volume。这也是为什么这种方式镜像名会显示成 `python`、并且首次启动会“下载一大堆环境”。要避免这点，请改用上面的方式一。
 
 如果只想允许本机访问，可以把端口改成：
 
@@ -237,6 +280,7 @@ APP_NAME=宝可梦卡价格订阅
 DATABASE_PATH=data/app.db
 SYNC_INTERVAL_MINUTES=360
 TCGDEX_LOCALE=en
+TCGDEX_API_BASE=https://api.tcgdex.net/v2
 AUTH_USERNAME=admin
 AUTH_PASSWORD=
 ALERT_WEBHOOK_URL=
@@ -282,6 +326,21 @@ ALERT_WEBHOOK_TIMEOUT_SECONDS=10
   ]
 }
 ```
+
+## 网页没有数据怎么办
+
+如果订阅了卡片但页面一直显示“暂无价格”，多半是 **Docker 主机访问不了 `api.tcgdex.net`**（局域网/被墙/代理问题）。现在系统会把同步失败的原因直接显示在首页顶部横幅和对应卡片上，照着排查即可：
+
+1. 先在主机上测试连通性：能打开 `https://api.tcgdex.net/v2/en/cards/swsh3-136` 才能同步到价格。
+2. 如果直连不通，在 compose 里把 `TCGDEX_API_BASE` 指向一个可用的反代/镜像（保持 `/v2` 结尾），例如自建的反向代理：
+
+```yaml
+TCGDEX_API_BASE: "https://your-proxy.example/tcgdex/v2"
+```
+
+3. 改完 `docker compose up -d` 重启，再点卡片上的“立即同步”。
+
+另外，TCGdex 的价格主要覆盖 `normal` / `reverse`（TCGplayer）和 `standard` / `holo`（Cardmarket）。即使你订阅时选的版本和数据对不上，页面也会自动回退显示该卡任意可用版本的价格，不会再出现“明明有价格却显示暂无”的情况。
 
 ## 在线更新代码
 

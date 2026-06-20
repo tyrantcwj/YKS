@@ -1,9 +1,11 @@
 services:
-  pokemon-price-watch:
-    image: python:3.12-slim
-    container_name: pokemon-price-watch
+  yks:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yks:latest
+    container_name: yks
     restart: unless-stopped
-    working_dir: /app/source
     ports:
       - "8000:8000"
     environment:
@@ -11,6 +13,7 @@ services:
       DATABASE_PATH: "/data/app.db"
       SYNC_INTERVAL_MINUTES: "360"
       TCGDEX_LOCALE: "en"
+      TCGDEX_API_BASE: "${TCGDEX_API_BASE:-https://api.tcgdex.net/v2}"
       AUTH_USERNAME: "${AUTH_USERNAME:-admin}"
       AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
@@ -20,75 +23,7 @@ services:
       YKS_UPDATE_BRANCH: "${YKS_UPDATE_BRANCH:-main}"
       YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
     volumes:
-      - pokemon-price-data:/data
-      - pokemon-price-code:/app/source
-    command:
-      - /bin/sh
-      - -lc
-      - |
-        set -eu
-        mkdir -p /app/source /data
-        cd /app/source
-        while [ ! -f pyproject.toml ]; do
-          find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          if python - <<'PY'
-        import os
-        import shutil
-        import tarfile
-        import tempfile
-        import urllib.request
-        from pathlib import Path
-
-        repo = os.environ.get("YKS_UPDATE_REPO", "tyrantcwj/YKS")
-        branch = os.environ.get("YKS_UPDATE_BRANCH", "main")
-        mirror = os.environ.get("YKS_GITHUB_MIRROR_PREFIX", "").strip().rstrip("/")
-        url = f"https://codeload.github.com/{repo}/tar.gz/refs/heads/{branch}"
-        urls = [url]
-        if mirror:
-            urls.insert(0, f"{mirror}/{url}")
-
-        last_error = None
-        with tempfile.TemporaryDirectory(prefix="yks-bootstrap-") as tmp:
-            tmp_path = Path(tmp)
-            archive = tmp_path / "source.tar.gz"
-            for candidate in urls:
-                try:
-                    request = urllib.request.Request(candidate, headers={"User-Agent": "YKS"})
-                    with urllib.request.urlopen(request, timeout=120) as response, archive.open("wb") as output:
-                        shutil.copyfileobj(response, output)
-                    break
-                except Exception as exc:
-                    last_error = exc
-            else:
-                raise RuntimeError(f"Could not download source archive: {last_error}")
-
-            extract_to = tmp_path / "extract"
-            extract_to.mkdir()
-            with tarfile.open(archive, "r:gz") as tar:
-                tar.extractall(extract_to, filter="data")
-            roots = [path for path in extract_to.iterdir() if path.is_dir()]
-            if not roots:
-                raise RuntimeError("Source archive did not contain a root directory.")
-            source_root = roots[0]
-            destination = Path.cwd()
-            for item in source_root.iterdir():
-                target = destination / item.name
-                if item.is_dir():
-                    shutil.copytree(item, target)
-                else:
-                    shutil.copy2(item, target)
-        PY
-          then
-            break
-          fi
-          echo "YKS bootstrap failed; retrying in 60 seconds..."
-          sleep 60
-        done
-        until python -m pip install --no-cache-dir -e .; do
-          echo "YKS dependency install failed; retrying in 60 seconds..."
-          sleep 60
-        done
-        exec /bin/sh docker/yks-entrypoint.sh
+      - yks-data:/data
     healthcheck:
       test:
         [
@@ -100,8 +35,7 @@ services:
       interval: 1m
       timeout: 10s
       retries: 3
-      start_period: 1m
+      start_period: 20s
 
 volumes:
-  pokemon-price-data:
-  pokemon-price-code:
+  yks-data:

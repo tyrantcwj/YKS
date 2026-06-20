@@ -50,6 +50,73 @@ def test_list_subscriptions_selects_latest_matching_variant(tmp_path, monkeypatc
         conn.close()
 
 
+def test_list_subscriptions_falls_back_to_any_priced_variant(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr("app.config.settings.database_path", str(db_path))
+    init_db()
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        subscription_id = repository.create_subscription(
+            conn,
+            card_id="swsh3-136",
+            nickname="Furret",
+            variant="holo",
+            target_price=None,
+            alert_percent=None,
+        )
+        # Only a non-matching variant has a price; display should still fall back to it.
+        conn.execute(
+            """
+            INSERT INTO price_snapshots (
+                subscription_id, card_id, provider, currency, variant, market_price
+            )
+            VALUES (?, 'swsh3-136', 'tcgplayer', 'USD', 'normal', 0.06)
+            """,
+            (subscription_id,),
+        )
+        conn.commit()
+
+        rows = repository.list_subscriptions(conn)
+
+        assert len(rows) == 1
+        assert rows[0]["market_price"] == 0.06
+        assert rows[0]["historical_high"] == 0.06
+    finally:
+        conn.close()
+
+
+def test_set_sync_error_is_persisted(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr("app.config.settings.database_path", str(db_path))
+    init_db()
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        subscription_id = repository.create_subscription(
+            conn,
+            card_id="swsh3-136",
+            nickname="Furret",
+            variant="normal",
+            target_price=None,
+            alert_percent=None,
+        )
+        repository.set_sync_error(conn, subscription_id, "同步失败：测试")
+        conn.commit()
+
+        subscription = repository.get_subscription(conn, subscription_id)
+        assert subscription["last_sync_error"] == "同步失败：测试"
+
+        repository.set_sync_error(conn, subscription_id, "")
+        conn.commit()
+        subscription = repository.get_subscription(conn, subscription_id)
+        assert subscription["last_sync_error"] == ""
+    finally:
+        conn.close()
+
+
 def test_market_summary_and_recent_price_movements(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
     monkeypatch.setattr("app.config.settings.database_path", str(db_path))

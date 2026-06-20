@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ settings.app_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}?v=20260620-9">
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}?v=20260620-10">
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="/">
         <span class="brand-mark"></span>
-        <span>{{ settings.app_name }}</span>
+        <span class="brand-text">{{ settings.app_name }}</span>
       </a>
       <nav class="top-actions">
         <a href="/update">在线更新</a>
@@ -18,7 +18,7 @@
         <a href="/export/subscriptions.csv">订阅导出</a>
         <a href="/export/prices.csv">价格导出</a>
         <form action="/sync" method="post">
-          <button title="同步全部订阅" aria-label="同步全部订阅">同步全部</button>
+          <button class="primary-button sync-all" title="同步全部订阅" aria-label="同步全部订阅">同步全部</button>
         </form>
       </nav>
     </header>

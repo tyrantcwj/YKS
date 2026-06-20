@@ -93,11 +93,11 @@ def _cardmarket_prices(pricing: dict[str, Any]) -> list[PricePoint]:
         return []
 
     variants = [
-        ("standard", "trend", "low", "avg"),
-        ("holo", "trend-holo", "low-holo", "avg-holo"),
+        ("standard", "trend", "low", "avg", "avg1", "avg7", "avg30"),
+        ("holo", "trend-holo", "low-holo", "avg-holo", "avg1-holo", "avg7-holo", "avg30-holo"),
     ]
     prices: list[PricePoint] = []
-    for variant, trend_key, low_key, avg_key in variants:
+    for variant, trend_key, low_key, avg_key, avg1_key, avg7_key, avg30_key in variants:
         point = PricePoint(
             provider="cardmarket",
             currency="EUR",
@@ -105,6 +105,9 @@ def _cardmarket_prices(pricing: dict[str, Any]) -> list[PricePoint]:
             trend_price=_as_float(provider.get(trend_key)),
             low_price=_as_float(provider.get(low_key)),
             market_price=_as_float(provider.get(avg_key)),
+            avg1_price=_as_float(provider.get(avg1_key)),
+            avg7_price=_as_float(provider.get(avg7_key)),
+            avg30_price=_as_float(provider.get(avg30_key)),
         )
         if point.display_price is not None:
             prices.append(point)
@@ -114,6 +117,11 @@ def _cardmarket_prices(pricing: dict[str, Any]) -> list[PricePoint]:
 def _safe_locale(locale: str | None) -> str:
     locale = (locale or settings.tcgdex_locale).strip().lower()
     return locale if locale else settings.tcgdex_locale
+
+
+def _api_base() -> str:
+    base = (settings.tcgdex_api_base or "https://api.tcgdex.net/v2").strip().rstrip("/")
+    return base or "https://api.tcgdex.net/v2"
 
 
 def _search_locales(query: str) -> list[str]:
@@ -135,7 +143,7 @@ def _search_locales(query: str) -> list[str]:
 
 async def fetch_card(card_id: str, locale: str | None = None) -> CardPayload:
     locale = _safe_locale(locale)
-    url = f"https://api.tcgdex.net/v2/{locale}/cards/{card_id}"
+    url = f"{_api_base()}/{locale}/cards/{card_id}"
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
         response = await client.get(url)
 
@@ -167,7 +175,7 @@ async def search_cards(query: str, limit: int = 12) -> list[CardSearchResult]:
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
         responses = []
         for locale in locales:
-            url = f"https://api.tcgdex.net/v2/{locale}/cards"
+            url = f"{_api_base()}/{locale}/cards"
             response = await client.get(url, params={"name": query})
             if response.status_code == 404:
                 continue

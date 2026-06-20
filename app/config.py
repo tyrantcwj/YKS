@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     database_path: str = "data/app.db"
     sync_interval_minutes: int = 360
     tcgdex_locale: str = "en"
+    tcgdex_api_base: str = "https://api.tcgdex.net/v2"
     request_timeout_seconds: float = 15.0
     auth_username: str = "admin"
     auth_password: str = ""

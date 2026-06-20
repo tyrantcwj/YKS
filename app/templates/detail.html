@@ -1,41 +1,219 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="detail-hero">
-  <a class="back-link" href="/">返回查询</a>
-  <div class="detail-layout">
-    <div class="detail-cover">
-      {% if subscription.image_url %}
-      <img src="{{ subscription.image_url }}" alt="{{ subscription.name or subscription.card_id }}">
-      {% else %}
-      <span>{{ subscription.card_id }}</span>
-      {% endif %}
-    </div>
-    <div class="detail-copy">
-      <p class="eyebrow">单卡行情</p>
-      <h1>{{ subscription.nickname or subscription.name or subscription.card_id }}</h1>
-      <p class="detail-meta">
-        {{ subscription.card_id }} · {{ subscription.set_name or "未知系列" }} ·
-        {{ rarity_label(subscription.rarity) or variant_label(subscription.variant) }} ·
-        {{ locale_label(subscription.tcgdex_locale) }}
-      </p>
-      <div class="detail-tags">
-        <span>{{ "启用追踪" if subscription.active else "已停用" }}</span>
-        <span>{{ variant_label(subscription.variant) }}</span>
-        <span>上次同步：{{ subscription.last_synced_at or "从未同步" }}</span>
+<a class="back-link" href="/">← 返回查询</a>
+
+{% if subscription.last_sync_error %}
+<div class="banner banner-error">
+  <strong>同步未成功</strong>
+  <span>{{ subscription.last_sync_error }}</span>
+</div>
+{% endif %}
+
+<section class="card-hero">
+  <div class="card-hero-cover">
+    {% if subscription.image_url %}
+    <img src="{{ subscription.image_url }}" alt="{{ subscription.name or subscription.card_id }}">
+    {% else %}
+    <span>{{ subscription.card_id }}</span>
+    {% endif %}
+  </div>
+  <div class="card-hero-body">
+    <p class="eyebrow">单卡行情</p>
+    <h1>{{ subscription.nickname or subscription.name or subscription.card_id }}</h1>
+    <p class="card-hero-meta">
+      {{ subscription.set_name or "未知系列" }} · {{ subscription.card_id }}
+      {% if subscription.rarity %} · {{ rarity_label(subscription.rarity) }}{% endif %}
+      · {{ locale_label(subscription.tcgdex_locale) }}
+    </p>
+
+    <div class="hero-price-block">
+      <div class="hero-price-main">
+        <span class="hero-price-label">{{ provider_label(hero.provider) }} · {{ variant_label(hero.variant) }}</span>
+        {% if hero.price is not none %}
+        <span class="hero-price-value">{{ hero.currency }} {{ "%.2f"|format(hero.price) }}</span>
+        {% else %}
+        <span class="hero-price-value muted-value">暂无价格</span>
+        {% endif %}
+        {% if hero.change30 is not none %}
+        <span class="pill-change {% if hero.change30 >= 0 %}up{% else %}down{% endif %}">
+          {% if hero.change30 >= 0 %}▲{% else %}▼{% endif %} {{ "%.1f"|format(hero.change30|abs) }}% · 近30日
+        </span>
+        {% endif %}
       </div>
-      <form action="/subscriptions/{{ subscription.id }}/sync" method="post" class="detail-actions">
+      <div class="hero-tags">
+        <span class="tag {% if subscription.active %}tag-on{% endif %}">{{ "追踪中" if subscription.active else "已停用" }}</span>
+        <span class="tag">追踪版本：{{ variant_label(subscription.variant) }}</span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <form action="/subscriptions/{{ subscription.id }}/sync" method="post">
         <button class="primary-button">立即同步</button>
       </form>
+      <span class="hero-synced">上次同步：{{ subscription.last_synced_at or "从未同步" }}</span>
     </div>
   </div>
 </section>
 
-<section class="research-panel">
+{% if windows %}
+<section class="panel">
   <div class="section-head">
-    <div>
-      <p class="eyebrow">成交参考</p>
-      <h2>外部行情查询</h2>
+    <div><p class="eyebrow">趋势均价</p><h2>Cardmarket 行情趋势</h2></div>
+    <span>{{ variant_label(windows.variant) }} · {{ windows.currency }}</span>
+  </div>
+  <div class="window-grid">
+    <div class="window-card"><span>1 日均价</span><strong>{% if windows.avg1 is not none %}{{ windows.currency }} {{ "%.2f"|format(windows.avg1) }}{% else %}—{% endif %}</strong></div>
+    <div class="window-card"><span>7 日均价</span><strong>{% if windows.avg7 is not none %}{{ windows.currency }} {{ "%.2f"|format(windows.avg7) }}{% else %}—{% endif %}</strong></div>
+    <div class="window-card"><span>30 日均价</span><strong>{% if windows.avg30 is not none %}{{ windows.currency }} {{ "%.2f"|format(windows.avg30) }}{% else %}—{% endif %}</strong></div>
+    <div class="window-card"><span>趋势价</span><strong>{% if windows.trend is not none %}{{ windows.currency }} {{ "%.2f"|format(windows.trend) }}{% else %}—{% endif %}</strong></div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="section-head">
+    <div><p class="eyebrow">市场深度</p><h2>分平台成交参考</h2></div>
+    <span>{{ provider_stats|length }} 组行情</span>
+  </div>
+  <div class="tier-strip">
+    {% for stat in provider_stats %}
+    <div class="tier-chip {% if loop.first %}active{% endif %}">
+      <span class="tier-chip-name">{{ provider_label(stat.provider) }} · {{ variant_label(stat.variant) }}</span>
+      <strong>{{ stat.currency }} {{ "%.2f"|format(stat.latest_price) }}</strong>
     </div>
+    {% else %}
+    <p class="search-empty">还没有成交记录。同步后会从 TCGdex 抓取 TCGplayer / Cardmarket 行情，也可手动记录 eBay、Snkrdunk 成交价。</p>
+    {% endfor %}
+  </div>
+  {% if provider_stats %}
+  <div class="tier-grid">
+    {% for stat in provider_stats %}
+    <article class="tier-card">
+      <div class="tier-card-head">
+        <span>{{ provider_label(stat.provider) }} · {{ variant_label(stat.variant) }}</span>
+        <strong>{{ stat.currency }} {{ "%.2f"|format(stat.latest_price) }}</strong>
+      </div>
+      <dl>
+        <div><dt>样本数</dt><dd>{{ stat.sample_count }}</dd></div>
+        <div><dt>均价</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.average_price) }}</dd></div>
+        <div><dt>最低</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.low_price) }}</dd></div>
+        <div><dt>最高</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.high_price) }}</dd></div>
+      </dl>
+      <p class="tier-card-foot">最新记录 {{ stat.latest_snapshot_at }}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div><p class="eyebrow">价格来源</p><h2>各来源最新报价</h2></div>
+    <span>{{ latest_prices|length }} 条来源记录</span>
+  </div>
+  <div class="source-grid">
+    {% for row in latest_prices %}
+    <article class="source-card">
+      <div class="source-head">
+        <span>{{ provider_label(row.provider) }} · {{ variant_label(row.variant) }}</span>
+        <strong>{{ money_label(row) }}</strong>
+      </div>
+      <dl>
+        <div><dt>低价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.low_price) if row.low_price is not none else "—" }}</dd></div>
+        <div><dt>中位价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.mid_price) if row.mid_price is not none else "—" }}</dd></div>
+        <div><dt>高价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.high_price) if row.high_price is not none else "—" }}</dd></div>
+        <div><dt>趋势价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.trend_price) if row.trend_price is not none else "—" }}</dd></div>
+      </dl>
+      <p class="source-foot">{{ row.snapshot_at }}</p>
+    </article>
+    {% else %}
+    <p class="search-empty">还没有价格来源记录。点击上方“立即同步”。</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="chart-head">
+    <h2>价格走势</h2>
+    {% if chart %}
+    <span>{{ chart.count }} 条记录 / {{ chart.currency }} {{ "%.2f"|format(chart.min_price) }}-{{ "%.2f"|format(chart.max_price) }}</span>
+    {% endif %}
+  </div>
+  {% if chart %}
+  <svg class="price-chart" viewBox="0 0 720 220" role="img" aria-label="价格走势图">
+    <line x1="24" y1="196" x2="696" y2="196"></line>
+    <line x1="24" y1="24" x2="24" y2="196"></line>
+    <polyline points="{{ chart.points }}"></polyline>
+  </svg>
+  <div class="chart-labels">
+    <span>{{ chart.first_label }}</span>
+    <span>{{ chart.last_label }}</span>
+  </div>
+  {% elif trend_chart %}
+  <p class="chart-hint">本地历史还在积累，下面是基于 Cardmarket 1/7/30 日均价的趋势参考。</p>
+  <svg class="price-chart" viewBox="0 0 720 220" role="img" aria-label="趋势参考图">
+    <line x1="24" y1="196" x2="696" y2="196"></line>
+    <line x1="24" y1="24" x2="24" y2="196"></line>
+    <polyline points="{{ trend_chart.points }}"></polyline>
+  </svg>
+  <div class="chart-labels">
+    <span>{{ trend_chart.first_label }}</span>
+    <span>{{ trend_chart.last_label }}</span>
+  </div>
+  {% else %}
+  <p class="chart-empty">这个版本还没有价格记录。</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div><p class="eyebrow">成交流水</p><h2>最近成交</h2></div>
+    <span>{{ recent_trades|length }} 条</span>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>时间</th><th>来源</th><th>版本</th><th>价格</th><th>涨跌</th></tr>
+      </thead>
+      <tbody>
+        {% for trade in recent_trades %}
+        <tr>
+          <td>{{ trade.snapshot_at }}</td>
+          <td>{{ provider_label(trade.provider) }}</td>
+          <td>{{ variant_label(trade.variant) }}</td>
+          <td>{% if trade.price is not none %}{{ trade.currency }} {{ "%.2f"|format(trade.price) }}{% else %}—{% endif %}</td>
+          <td>
+            {% if trade.change is not none %}
+            <span class="cell-change {% if trade.change >= 0 %}up{% else %}down{% endif %}">{% if trade.change >= 0 %}+{% endif %}{{ "%.1f"|format(trade.change) }}%</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">还没有成交记录。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="watch-panel">
+  <div class="watch-card">
+    <span>目标价</span>
+    <strong>{{ subscription.target_price if subscription.target_price is not none else "未设置" }}</strong>
+  </div>
+  <div class="watch-card">
+    <span>涨跌提醒</span>
+    <strong>{{ (subscription.alert_percent ~ "%") if subscription.alert_percent is not none else "未设置" }}</strong>
+  </div>
+  <div class="watch-card">
+    <span>当前追踪版本</span>
+    <strong>{{ variant_label(subscription.variant) }}</strong>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div><p class="eyebrow">成交参考</p><h2>外部行情 & 手动记录</h2></div>
   </div>
   <div class="research-grid">
     {% for link in market_links %}
@@ -79,135 +257,31 @@
   </form>
 </section>
 
-<section class="deal-panel">
+<section class="panel">
   <div class="section-head">
-    <div>
-      <p class="eyebrow">成交行情</p>
-      <h2>分平台成交参考</h2>
-    </div>
-    <span>{{ provider_stats|length }} 组行情</span>
+    <div><p class="eyebrow">历史记录</p><h2>同步快照</h2></div>
   </div>
-  <div class="deal-grid">
-    {% for stat in provider_stats %}
-    <article class="deal-card">
-      <div class="deal-head">
-        <span>{{ provider_label(stat.provider) }}</span>
-        <strong>{{ stat.currency }} {{ "%.2f"|format(stat.latest_price) }}</strong>
-      </div>
-      <p>{{ variant_label(stat.variant) }} · 最新记录 {{ stat.latest_snapshot_at }}</p>
-      <dl>
-        <div><dt>样本数</dt><dd>{{ stat.sample_count }}</dd></div>
-        <div><dt>均价</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.average_price) }}</dd></div>
-        <div><dt>最低</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.low_price) }}</dd></div>
-        <div><dt>最高</dt><dd>{{ stat.currency }} {{ "%.2f"|format(stat.high_price) }}</dd></div>
-      </dl>
-    </article>
-    {% else %}
-    <p class="search-empty">还没有成交记录。先从 eBay 或 Snkrdunk 查到成交价后记录进来，这里会自动汇总。</p>
-    {% endfor %}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>时间</th><th>来源</th><th>版本</th><th>价格</th><th>低价</th><th>中位价</th><th>高价</th></tr>
+      </thead>
+      <tbody>
+        {% for row in history %}
+        <tr>
+          <td>{{ row.snapshot_at }}</td>
+          <td>{{ provider_label(row.provider) }}</td>
+          <td>{{ variant_label(row.variant) }}</td>
+          <td>{{ money_label(row) }}</td>
+          <td>{{ row.low_price or "" }}</td>
+          <td>{{ row.mid_price or "" }}</td>
+          <td>{{ row.high_price or "" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">还没有历史记录。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-</section>
-
-<section class="market-panel">
-  <div class="section-head">
-    <div>
-      <p class="eyebrow">最新行情</p>
-      <h2>价格来源与版本</h2>
-    </div>
-    <span>{{ latest_prices|length }} 条来源记录</span>
-  </div>
-  <div class="market-grid">
-    {% for row in latest_prices %}
-    <article class="market-card">
-      <div>
-        <span>{{ provider_label(row.provider) }}</span>
-        <strong>{{ money_label(row) }}</strong>
-      </div>
-      <p>{{ variant_label(row.variant) }} · {{ row.snapshot_at }}</p>
-      <dl>
-        <div><dt>低价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.low_price) if row.low_price is not none else "-" }}</dd></div>
-        <div><dt>中位价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.mid_price) if row.mid_price is not none else "-" }}</dd></div>
-        <div><dt>高价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.high_price) if row.high_price is not none else "-" }}</dd></div>
-        <div><dt>趋势价</dt><dd>{{ row.currency }} {{ "%.2f"|format(row.trend_price) if row.trend_price is not none else "-" }}</dd></div>
-      </dl>
-    </article>
-    {% else %}
-    <p class="search-empty">还没有价格来源记录。可以先点击“立即同步”。</p>
-    {% endfor %}
-  </div>
-</section>
-
-<section class="watch-panel">
-  <div class="watch-card">
-    <span>目标价</span>
-    <strong>{{ subscription.target_price if subscription.target_price is not none else "未设置" }}</strong>
-  </div>
-  <div class="watch-card">
-    <span>涨跌提醒</span>
-    <strong>{{ (subscription.alert_percent ~ "%") if subscription.alert_percent is not none else "未设置" }}</strong>
-  </div>
-  <div class="watch-card">
-    <span>当前追踪版本</span>
-    <strong>{{ variant_label(subscription.variant) }}</strong>
-  </div>
-</section>
-
-<section class="chart-panel">
-  <div class="chart-head">
-    <h2>价格走势</h2>
-    {% if chart %}
-    <span>{{ chart.count }} 条记录 / {{ chart.currency }} {{ "%.2f"|format(chart.min_price) }}-{{ "%.2f"|format(chart.max_price) }}</span>
-    {% endif %}
-  </div>
-  {% if chart %}
-  <svg class="price-chart" viewBox="0 0 720 220" role="img" aria-label="价格走势图">
-    <line x1="24" y1="196" x2="696" y2="196"></line>
-    <line x1="24" y1="24" x2="24" y2="196"></line>
-    <polyline points="{{ chart.points }}"></polyline>
-  </svg>
-  <div class="chart-labels">
-    <span>{{ chart.first_label }}</span>
-    <span>{{ chart.last_label }}</span>
-  </div>
-  {% else %}
-  <p class="chart-empty">这个版本还没有价格记录。</p>
-  {% endif %}
-</section>
-
-<section class="history">
-  <div class="section-head">
-    <div>
-      <p class="eyebrow">历史记录</p>
-      <h2>同步快照</h2>
-    </div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>时间</th>
-        <th>来源</th>
-        <th>版本</th>
-        <th>价格</th>
-        <th>低价</th>
-        <th>中位价</th>
-        <th>高价</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in history %}
-      <tr>
-        <td>{{ row.snapshot_at }}</td>
-        <td>{{ provider_label(row.provider) }}</td>
-        <td>{{ variant_label(row.variant) }}</td>
-        <td>{{ money_label(row) }}</td>
-        <td>{{ row.low_price or "" }}</td>
-        <td>{{ row.mid_price or "" }}</td>
-        <td>{{ row.high_price or "" }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7">还没有历史记录。</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </section>
 {% endblock %}

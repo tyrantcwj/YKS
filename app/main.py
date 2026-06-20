@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import repository
-from app.chart import build_price_chart
+from app.chart import build_price_chart, build_trend_chart
 from app.config import settings
 from app.db import backup_database, get_db, init_db
 from app.models import PricePoint
@@ -166,6 +166,87 @@ def market_links(subscription) -> list[dict[str, str]]:
     ]
 
 
+def _primary_stat(provider_stats, variant: str):
+    if not provider_stats:
+        return None
+    for stat in provider_stats:
+        if stat["variant"] == variant:
+            return stat
+    return provider_stats[0]
+
+
+def _trend_windows(latest_prices, variant: str) -> dict | None:
+    candidates = [row for row in latest_prices if row["provider"] == "cardmarket"]
+    if not candidates:
+        return None
+    chosen = next((row for row in candidates if row["variant"] == variant), candidates[0])
+    keys = chosen.keys()
+
+    def _field(name: str):
+        return chosen[name] if name in keys else None
+
+    latest = display_price(chosen)
+    avg30 = _field("avg30_price")
+    change30 = None
+    if latest is not None and avg30 not in (None, 0):
+        change30 = ((latest - avg30) / avg30) * 100
+    return {
+        "currency": chosen["currency"],
+        "variant": chosen["variant"],
+        "latest": latest,
+        "avg1": _field("avg1_price"),
+        "avg7": _field("avg7_price"),
+        "avg30": avg30,
+        "trend": _field("trend_price"),
+        "change30": change30,
+    }
+
+
+def _recent_trades(history, limit: int = 30) -> list[dict]:
+    previous: dict[tuple, float] = {}
+    built: list[dict] = []
+    for row in reversed(history):
+        price = display_price(row)
+        key = (row["provider"], row["variant"], row["currency"])
+        change = None
+        if price is not None:
+            base = previous.get(key)
+            if base not in (None, 0):
+                change = ((price - base) / base) * 100
+            previous[key] = price
+        built.append(
+            {
+                "snapshot_at": row["snapshot_at"],
+                "provider": row["provider"],
+                "variant": row["variant"],
+                "currency": row["currency"],
+                "price": price,
+                "change": change,
+            }
+        )
+    built.reverse()
+    return built[:limit]
+
+
+def build_detail_context(subscription, history, latest_prices, provider_stats) -> dict:
+    variant = subscription["variant"]
+    primary = _primary_stat(provider_stats, variant)
+    windows = _trend_windows(latest_prices, variant)
+    hero = {
+        "price": primary["latest_price"] if primary else None,
+        "currency": primary["currency"] if primary else "",
+        "provider": primary["provider"] if primary else None,
+        "variant": primary["variant"] if primary else variant,
+        "change30": windows["change30"] if windows else None,
+    }
+    return {
+        "hero": hero,
+        "primary": primary,
+        "windows": windows,
+        "recent_trades": _recent_trades(history),
+    }
+
+
 def _row_price(row) -> float | None:
     return display_price(row)
 
@@ -299,6 +380,11 @@ async def dashboard(
         and (not code or code.lower() in row["card_id"].lower())
     ]
     subscriptions = _sort_rows(subscriptions, sort)
+    sync_errors = [
+        row
+        for row in all_subscriptions
+        if "last_sync_error" in row.keys() and (row["last_sync_error"] or "").strip()
+    ]
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -306,6 +392,7 @@ async def dashboard(
             "settings": settings,
             "subscriptions": subscriptions,
             "subscription_count": len(all_subscriptions),
+            "sync_error_count": len(sync_errors),
             "alerts": alerts,
             "market_summary": market_summary,
             "price_movements": price_movements,
@@ -541,6 +628,7 @@ async def subscription_detail(request: Request, subscription_id: int):
         history = repository.recent_prices(db, subscription_id, limit=80)
         latest_prices = repository.latest_prices_by_subscription(db, subscription_id)
         provider_stats = repository.provider_market_stats(db, subscription_id)
+    detail = build_detail_context(subscription, history, latest_prices, provider_stats)
     return templates.TemplateResponse(
         request,
         "detail.html",
@@ -552,6 +640,11 @@ async def subscription_detail(request: Request, subscription_id: int):
             "provider_stats": provider_stats,
             "market_links": market_links(subscription),
             "chart": build_price_chart(history, subscription["variant"]),
+            "trend_chart": build_trend_chart(history),
+            "hero": detail["hero"],
+            "primary": detail["primary"],
+            "windows": detail["windows"],
+            "recent_trades": detail["recent_trades"],
             "display_price": display_price,
             "money_label": money_label,
             "variant_label": variant_label,
