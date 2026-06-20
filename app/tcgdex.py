@@ -133,9 +133,11 @@ def _api_base() -> str:
 def _search_locales(query: str) -> list[str]:
     candidates: list[str]
     if re.search(r"[\u3040-\u30ff]", query):
-        candidates = ["ja", "zh-tw", "zh-cn", "en"]
+        candidates = ["ja", "zh-cn", "zh-tw", "en"]
     elif re.search(r"[\u4e00-\u9fff]", query):
-        candidates = ["zh-tw", "zh-cn", "ja", "en"]
+        # Lead with Simplified so a 简中 user sees zh-cn cards first (its catalog
+        # is smaller, so it otherwise loses to the larger zh-tw/ja/en sets).
+        candidates = ["zh-cn", "zh-tw", "ja", "en"]
     else:
         candidates = [settings.tcgdex_locale, "en"]
 
@@ -277,12 +279,15 @@ async def search_cards(query: str, limit: int = 24) -> list[CardSearchResult]:
                 break
         buckets.append(bucket)
 
-    # Interleave locales (round-robin) so a Chinese search surfaces a mix of
-    # 中/英/日 cards instead of being filled by the first locale, while still
-    # keeping cards with artwork ahead of image-less ones globally.
+    # Interleave locales round-robin (one card per locale per round) so a Chinese
+    # search surfaces a 中/英/日 mix instead of being filled by the first locale.
+    # Ordering by round *before* image presence is deliberate: zh-cn cards often
+    # have no thumbnail on TCGdex, and a global image-first sort would push the
+    # few Simplified results past the result limit. Within a round, cards with
+    # artwork still come first.
     scored: list[tuple[tuple[int, int, int], CardSearchResult]] = []
     for locale_index, bucket in enumerate(buckets):
         for round_index, result in enumerate(bucket):
-            scored.append(((0 if result.image_url else 1, round_index, locale_index), result))
+            scored.append(((round_index, 0 if result.image_url else 1, locale_index), result))
     scored.sort(key=lambda item: item[0])
     return [result for _, result in scored][:limit]
