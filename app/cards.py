@@ -57,17 +57,23 @@ def _interleave(buckets: list[list[CardSearchResult]], limit: int) -> list[CardS
     return ordered
 
 
-async def search_all(query: str, limit: int = 120) -> list[CardSearchResult]:
+# No user-facing result cap (the UI filters instead); this is just a guard so a
+# pathological one-character query can't try to materialize the whole catalog.
+_SAFETY_CAP = 2000
+
+
+async def search_all(query: str, limit: int | None = None) -> list[CardSearchResult]:
     query = (query or "").strip()
     if not query:
         return []
 
+    cap = limit if limit is not None else _SAFETY_CAP
     translated = pokemon_names.localized_names(query)
-    tcg_results = await search_tcgdex(query, limit)
+    tcg_results = await search_tcgdex(query, cap)
 
     chs_extra = [t for t in [translated.get("zh-cn"), translated.get("zh-tw")] if t]
-    chs_results = chs.search(query, limit, extra_terms=chs_extra)
-    pika_results = await pikaqian.search(query, translated.get("en"), limit)
+    chs_results = chs.search(query, cap, extra_terms=chs_extra)
+    pika_results = await pikaqian.search(query, translated.get("en"), min(cap, 50))
 
     # Lead with Simplified sources for Chinese queries so 国行 cards surface;
     # otherwise keep TCGdex first.
@@ -75,4 +81,4 @@ async def search_all(query: str, limit: int = 120) -> list[CardSearchResult]:
         buckets = [chs_results, pika_results, tcg_results]
     else:
         buckets = [tcg_results, chs_results, pika_results]
-    return _interleave(buckets, limit)
+    return _interleave(buckets, cap)

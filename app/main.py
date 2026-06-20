@@ -367,6 +367,12 @@ async def dashboard(
     show_price: str = "1",
 ):
     search_results = await search_all(q) if q.strip() else []
+    locale_order = ["zh-cn", "zh-tw", "ja", "en"]
+    locale_counts: dict[str, int] = {}
+    for result in search_results:
+        locale_counts[result.tcgdex_locale] = locale_counts.get(result.tcgdex_locale, 0) + 1
+    result_locales = [(loc, locale_counts[loc]) for loc in locale_order if loc in locale_counts]
+    result_locales += [(loc, count) for loc, count in locale_counts.items() if loc not in locale_order]
     with get_db() as db:
         all_subscriptions = repository.list_subscriptions(db)
         alerts = repository.list_alerts(db)
@@ -403,6 +409,7 @@ async def dashboard(
             "ranked_cards": ranked_cards,
             "query": q.strip(),
             "search_results": search_results,
+            "result_locales": result_locales,
             "sort": sort,
             "rarity": rarity,
             "series": series,

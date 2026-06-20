@@ -46,15 +46,25 @@
       <p class="eyebrow">搜索结果</p>
       <h2>“{{ query }}”</h2>
     </div>
-    <span>{{ search_results|length }} 张卡片</span>
+    <span><span id="result-visible-count">{{ search_results|length }}</span> 张卡片</span>
   </div>
 
-  <div class="search-results rich-results">
+  {% if search_results %}
+  <div class="result-filters" id="result-filters">
+    <button type="button" class="filter-chip active" data-locale="all">全部 {{ search_results|length }}</button>
+    {% for loc, count in result_locales %}
+    <button type="button" class="filter-chip" data-locale="{{ loc }}">{{ locale_label(loc) }} {{ count }}</button>
+    {% endfor %}
+    <input type="search" id="result-search" class="result-search" placeholder="在结果中筛选卡名 / 编号">
+  </div>
+  {% endif %}
+
+  <div class="search-results rich-results" id="search-results">
     {% for result in search_results %}
-    <article class="search-result">
+    <article class="search-result" data-locale="{{ result.tcgdex_locale }}" data-text="{{ (result.name ~ ' ' ~ result.card_id ~ ' ' ~ (result.local_id or '')) | lower }}">
       <div class="search-thumb">
         {% if result.image_url %}
-        <img src="{{ result.image_url }}" alt="{{ result.name }}">
+        <img src="{{ result.image_url }}" alt="{{ result.name }}" loading="lazy">
         {% else %}
         <span>{{ result.local_id or result.card_id }}</span>
         {% endif %}
@@ -74,8 +84,46 @@
     {% else %}
     <p class="search-empty">没有找到 “{{ query }}” 相关卡片。可以尝试输入日文、英文名或更短关键词。</p>
     {% endfor %}
+    <p class="search-empty" id="result-no-match" hidden>没有符合筛选条件的卡片。</p>
   </div>
 </section>
+<script>
+(function () {
+  var panel = document.getElementById("result-filters");
+  if (!panel) return;
+  var grid = document.getElementById("search-results");
+  var cards = Array.prototype.slice.call(grid.querySelectorAll(".search-result"));
+  var chips = Array.prototype.slice.call(panel.querySelectorAll(".filter-chip"));
+  var search = document.getElementById("result-search");
+  var countLabel = document.getElementById("result-visible-count");
+  var noMatch = document.getElementById("result-no-match");
+  var activeLocale = "all";
+
+  function apply() {
+    var term = (search.value || "").trim().toLowerCase();
+    var visible = 0;
+    cards.forEach(function (card) {
+      var okLocale = activeLocale === "all" || card.getAttribute("data-locale") === activeLocale;
+      var okText = !term || (card.getAttribute("data-text") || "").indexOf(term) !== -1;
+      var show = okLocale && okText;
+      card.hidden = !show;
+      if (show) visible++;
+    });
+    if (countLabel) countLabel.textContent = visible;
+    if (noMatch) noMatch.hidden = visible !== 0;
+  }
+
+  chips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      chips.forEach(function (c) { c.classList.remove("active"); });
+      chip.classList.add("active");
+      activeLocale = chip.getAttribute("data-locale");
+      apply();
+    });
+  });
+  if (search) search.addEventListener("input", apply);
+})();
+</script>
 {% endif %}
 
 <section class="ranking-panel" aria-label="热门排行">
