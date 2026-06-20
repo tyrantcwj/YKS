@@ -3,10 +3,10 @@
 <section class="toolbar-band">
   <form class="search-form" action="/" method="get">
     <label>
-      <span>Search Cards</span>
-      <input name="q" value="{{ query }}" placeholder="pikachu, charizard, furret">
+      <span>搜索卡片</span>
+      <input name="q" value="{{ query }}" placeholder="输入英文卡名，例如 pikachu、charizard">
     </label>
-    <button class="primary-button" type="submit">Search</button>
+    <button class="primary-button" type="submit">搜索</button>
   </form>
 
   {% if query %}
@@ -28,42 +28,42 @@
         <input type="hidden" name="card_id" value="{{ result.card_id }}">
         <input type="hidden" name="nickname" value="{{ result.name }}">
         <input type="hidden" name="variant" value="normal">
-        <button type="submit">Add</button>
+        <button type="submit">订阅</button>
       </form>
     </article>
     {% else %}
-    <p class="search-empty">No cards found for "{{ query }}".</p>
+    <p class="search-empty">没有找到 “{{ query }}” 相关卡片。</p>
     {% endfor %}
   </div>
   {% endif %}
 
   <form class="subscribe-form" action="/subscriptions" method="post">
     <label>
-      <span>Card ID</span>
+      <span>卡片 ID</span>
       <input name="card_id" placeholder="swsh3-136" required>
     </label>
     <label>
-      <span>Name</span>
-      <input name="nickname" placeholder="Personal label">
+      <span>备注名称</span>
+      <input name="nickname" placeholder="自定义显示名">
     </label>
     <label>
-      <span>Variant</span>
+      <span>版本</span>
       <select name="variant">
-        <option value="holo">Holo</option>
-        <option value="normal">Normal</option>
-        <option value="reverse">Reverse</option>
-        <option value="standard">Standard</option>
+        <option value="holo">闪卡</option>
+        <option value="normal">普通</option>
+        <option value="reverse">反闪</option>
+        <option value="standard">标准</option>
       </select>
     </label>
     <label>
-      <span>Target</span>
-      <input name="target_price" type="number" min="0" step="0.01" placeholder="USD/EUR">
+      <span>目标价</span>
+      <input name="target_price" type="number" min="0" step="0.01" placeholder="美元/欧元">
     </label>
     <label>
-      <span>Move %</span>
+      <span>涨跌提醒</span>
       <input name="alert_percent" type="number" min="0" step="0.1" placeholder="10">
     </label>
-    <button class="primary-button" type="submit">Add</button>
+    <button class="primary-button" type="submit">添加订阅</button>
   </form>
 </section>
 
@@ -94,40 +94,40 @@
       <div class="card-head">
         <div>
           <h2>{{ item.nickname or item.name or item.card_id }}</h2>
-          <p>{{ item.set_name or "Unknown set" }} · {{ item.rarity or item.variant }}</p>
+          <p>{{ item.set_name or "未知系列" }} · {{ item.rarity or variant_label(item.variant) }}</p>
         </div>
-        <span class="status">{{ "On" if item.active else "Off" }}</span>
+        <span class="status">{{ "启用" if item.active else "停用" }}</span>
       </div>
       <div class="price-row">
         <span class="price">
-          {% if price is not none %}{{ item.currency }} {{ "%.2f"|format(price) }}{% else %}No price{% endif %}
+          {% if price is not none %}{{ item.currency }} {{ "%.2f"|format(price) }}{% else %}暂无价格{% endif %}
         </span>
-        <span>{{ item.provider or "pending" }} · {{ item.variant }}</span>
+        <span>{{ provider_label(item.provider) }} · {{ variant_label(item.variant) }}</span>
       </div>
       <form class="edit-form" action="/subscriptions/{{ item.id }}/edit" method="post">
-        <input name="nickname" value="{{ item.nickname }}" placeholder="Name">
+        <input class="wide-field" name="nickname" value="{{ item.nickname }}" placeholder="备注名称">
         <select name="variant">
           {% for option in ["holo", "normal", "reverse", "standard"] %}
-          <option value="{{ option }}" {% if item.variant == option %}selected{% endif %}>{{ option }}</option>
+          <option value="{{ option }}" {% if item.variant == option %}selected{% endif %}>{{ variant_label(option) }}</option>
           {% endfor %}
         </select>
-        <input name="target_price" type="number" step="0.01" value="{{ item.target_price or '' }}" placeholder="Target">
-        <input name="alert_percent" type="number" step="0.1" value="{{ item.alert_percent or '' }}" placeholder="Move %">
-        <label class="toggle"><input name="active" type="checkbox" {% if item.active %}checked{% endif %}><span>Active</span></label>
-        <button title="Save" aria-label="Save">✓</button>
+        <input name="target_price" type="number" step="0.01" value="{{ item.target_price or '' }}" placeholder="目标价">
+        <input name="alert_percent" type="number" step="0.1" value="{{ item.alert_percent or '' }}" placeholder="涨跌%">
+        <label class="toggle"><input name="active" type="checkbox" {% if item.active %}checked{% endif %}><span>启用</span></label>
+        <button title="保存" aria-label="保存">保存</button>
       </form>
       <div class="actions">
-        <a href="/subscriptions/{{ item.id }}">History</a>
-        <form action="/subscriptions/{{ item.id }}/sync" method="post"><button>Sync</button></form>
-        <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">Delete</button></form>
+        <a href="/subscriptions/{{ item.id }}">历史</a>
+        <form action="/subscriptions/{{ item.id }}/sync" method="post"><button>同步</button></form>
+        <form action="/subscriptions/{{ item.id }}/delete" method="post"><button class="danger">删除</button></form>
       </div>
-      <p class="meta">Last synced {{ item.last_synced_at or "never" }}</p>
+      <p class="meta">上次同步：{{ item.last_synced_at or "从未同步" }}</p>
     </div>
   </article>
   {% else %}
   <div class="empty-state">
-    <h1>No subscriptions yet</h1>
-    <p>Add a TCGdex card ID to begin tracking prices.</p>
+    <h1>还没有订阅</h1>
+    <p>搜索卡片或填写 TCGdex 卡片 ID，就可以开始追踪价格。</p>
   </div>
   {% endfor %}
 </section>

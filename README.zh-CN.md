@@ -48,7 +48,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      APP_NAME: "Pokemon Price Watch"
+      APP_NAME: "宝可梦卡价格订阅"
       DATABASE_PATH: "/data/app.db"
       SYNC_INTERVAL_MINUTES: "360"
       TCGDEX_LOCALE: "en"
@@ -233,7 +233,7 @@ YKS_GITHUB_MIRROR_PREFIX: ""
 `.env.example` 示例：
 
 ```text
-APP_NAME=Pokemon Price Watch
+APP_NAME=宝可梦卡价格订阅
 DATABASE_PATH=data/app.db
 SYNC_INTERVAL_MINUTES=360
 TCGDEX_LOCALE=en
@@ -271,7 +271,7 @@ ALERT_WEBHOOK_TIMEOUT_SECONDS=10
 
 ```json
 {
-  "source": "Pokemon Price Watch",
+  "source": "宝可梦卡价格订阅",
   "alerts": [
     {
       "kind": "target",
@@ -332,11 +332,11 @@ YKS_GITHUB_MIRROR_PREFIX=https://ghfast.top/
 
 网页 header 中有三个下载入口：
 
-- `Database Backup`: 下载 SQLite 数据库快照
-- `Subscriptions CSV`: 导出订阅配置
-- `Prices CSV`: 导出价格历史
+- `数据库备份`: 下载 SQLite 数据库快照
+- `订阅导出`: 导出订阅配置
+- `价格导出`: 导出价格历史
 
-完整迁移推荐用 `Database Backup`。CSV 主要用于查看、分析或表格处理。
+完整迁移推荐用 `数据库备份`。CSV 主要用于查看、分析或表格处理。
 
 ## 卡片 ID
 

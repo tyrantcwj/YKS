@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,12 +13,12 @@
         <span>{{ settings.app_name }}</span>
       </a>
       <nav class="top-actions">
-        <a href="/update">Update Code</a>
-        <a href="/export/database.sqlite">Database Backup</a>
-        <a href="/export/subscriptions.csv">Subscriptions CSV</a>
-        <a href="/export/prices.csv">Prices CSV</a>
+        <a href="/update">在线更新</a>
+        <a href="/export/database.sqlite">数据库备份</a>
+        <a href="/export/subscriptions.csv">订阅导出</a>
+        <a href="/export/prices.csv">价格导出</a>
         <form action="/sync" method="post">
-          <button title="Sync all" aria-label="Sync all">Sync</button>
+          <button title="同步全部订阅" aria-label="同步全部订阅">同步全部</button>
         </form>
       </nav>
     </header>

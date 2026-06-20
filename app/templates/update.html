@@ -2,9 +2,9 @@
 {% block content %}
 <section class="update-panel">
   <div class="chart-head">
-    <h1>Online Update</h1>
+    <h1>在线更新</h1>
     {% if status %}
-    <span>{{ status.runtime.mode }} / {{ "supported" if status.runtime.supported else "disabled" }}</span>
+    <span>{{ status.runtime.mode }} / {{ "可用" if status.runtime.supported else "已禁用" }}</span>
     {% endif %}
   </div>
 
@@ -18,16 +18,16 @@
 
   {% if status %}
   <div class="update-lines">
-    <div><span>Repository</span><strong>{{ status.updateRepo }}</strong></div>
-    <div><span>Branch</span><strong>{{ status.updateBranch }}</strong></div>
-    <div><span>Current</span><strong>{{ status.current.commit[:7] if status.current.commit else "unknown" }}</strong></div>
-    <div><span>Latest</span><strong>{{ status.latest.commit[:7] if status.latest else "unknown" }}</strong></div>
-    <div><span>Status</span><strong>{{ "Update available" if status.updateAvailable else "Up to date or unknown" }}</strong></div>
+    <div><span>仓库</span><strong>{{ status.updateRepo }}</strong></div>
+    <div><span>分支</span><strong>{{ status.updateBranch }}</strong></div>
+    <div><span>当前版本</span><strong>{{ status.current.commit[:7] if status.current.commit else "未知" }}</strong></div>
+    <div><span>最新版本</span><strong>{{ status.latest.commit[:7] if status.latest else "未知" }}</strong></div>
+    <div><span>状态</span><strong>{{ "发现新版本" if status.updateAvailable else "已是最新或暂时未知" }}</strong></div>
   </div>
-  <p class="chart-empty">{{ status.runtime.detail }}</p>
+  <p class="chart-empty">会下载最新源码、覆盖容器内文件、安装依赖并自动重启服务。</p>
   <form action="/update/apply" method="post" class="update-actions">
-    <button class="primary-button" type="submit" {% if not status.runtime.supported %}disabled{% endif %}>Update Now</button>
-    <a href="/update">Check Again</a>
+    <button class="primary-button" type="submit" {% if not status.runtime.supported %}disabled{% endif %}>立即更新</button>
+    <a href="/update">重新检查</a>
   </form>
   {% endif %}
 </section>

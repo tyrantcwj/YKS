@@ -34,6 +34,30 @@ TEMPLATES_DIR = APP_DIR / "templates"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+VARIANT_LABELS = {
+    "holo": "闪卡",
+    "normal": "普通",
+    "reverse": "反闪",
+    "standard": "标准",
+}
+
+PROVIDER_LABELS = {
+    "tcgplayer": "TCGplayer",
+    "cardmarket": "Cardmarket",
+}
+
+
+def variant_label(value: str | None) -> str:
+    if not value:
+        return "未选择"
+    return VARIANT_LABELS.get(value, value)
+
+
+def provider_label(value: str | None) -> str:
+    if not value:
+        return "待同步"
+    return PROVIDER_LABELS.get(value, value)
+
 
 def parse_optional_float(value: str | None) -> float | None:
     if value is None or value.strip() == "":
@@ -83,7 +107,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 def _unauthorized() -> Response:
     return Response(
         status_code=401,
-        headers={"WWW-Authenticate": 'Basic realm="Pokemon Price Watch"'},
+        headers={"WWW-Authenticate": 'Basic realm="YKS"'},
     )
 
 
@@ -126,6 +150,8 @@ async def dashboard(request: Request, q: str = ""):
             "query": q.strip(),
             "search_results": search_results,
             "display_price": display_price,
+            "variant_label": variant_label,
+            "provider_label": provider_label,
         },
     )
 
@@ -309,6 +335,8 @@ async def subscription_detail(request: Request, subscription_id: int):
             "history": history,
             "chart": build_price_chart(history, subscription["variant"]),
             "display_price": display_price,
+            "variant_label": variant_label,
+            "provider_label": provider_label,
         },
     )
 

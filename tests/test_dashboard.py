@@ -155,9 +155,9 @@ def test_subscription_detail_renders_price_chart(tmp_path, monkeypatch):
         response = client.get(f"/subscriptions/{subscription_id}")
 
     assert response.status_code == 200
-    assert "Price Trend" in response.text
+    assert "价格走势" in response.text
     assert "<polyline" in response.text
-    assert "2 points" in response.text
+    assert "2 条记录" in response.text
 
 
 def test_update_page_renders_status(monkeypatch):
@@ -177,6 +177,6 @@ def test_update_page_renders_status(monkeypatch):
         response = client.get("/update")
 
     assert response.status_code == 200
-    assert "Online Update" in response.text
-    assert "Update available" in response.text
-    assert "Update Now" in response.text
+    assert "在线更新" in response.text
+    assert "发现新版本" in response.text
+    assert "立即更新" in response.text

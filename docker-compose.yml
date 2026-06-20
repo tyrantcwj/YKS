@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      APP_NAME: "Pokemon Price Watch"
+      APP_NAME: "宝可梦卡价格订阅"
       DATABASE_PATH: "/data/app.db"
       SYNC_INTERVAL_MINUTES: "360"
       TCGDEX_LOCALE: "en"

@@ -68,7 +68,7 @@ async def test_send_alert_notifications_posts_json(monkeypatch):
             "url": "https://example.test/hook",
             "timeout": 3.0,
             "json": {
-                "source": "Pokemon Price Watch",
+                "source": "宝可梦卡价格订阅",
                 "alerts": [
                     {
                         "kind": "movement",
