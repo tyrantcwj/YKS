@@ -1,6 +1,9 @@
 services:
   yks:
-    image: ghcr.io/tyrantcwj/yks:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yks:local
     container_name: yks
     restart: unless-stopped
     ports:

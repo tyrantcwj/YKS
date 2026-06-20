@@ -24,35 +24,41 @@
 
 ## 文件说明
 
-- `docker-compose.yml`: 即开即用的构建编排文件（依赖打包进镜像，秒开）
+- `docker-compose.yml`: 拉取 GHCR 预构建镜像直接运行（下载就能用，推荐）
+- `docker-compose.build.yml`: 本地源码构建用的编排文件
 - `Dockerfile`: 构建镜像用，依赖在构建时安装
+- `.github/workflows/docker-image.yml`: 自动构建并推送镜像到 GHCR 的 CI
 - `.env.example`: 配置示例
 - `app/`: FastAPI 应用
 - `scripts/smoke-docker.ps1`: Docker 部署自检脚本
 - `docker/yks-entrypoint.sh`: 容器内循环启动脚本，用于在线更新后自动重启服务
 - `tests/`: 单元和路由测试
 
-## 部署方式一：即开即用（推荐）
+## 部署方式一：下载预构建镜像直接用（推荐，和 iTyc-Rss 一样）
 
-推荐用仓库自带的 `docker-compose.yml` 直接构建镜像。依赖在构建时就装进镜像，**启动时不会再下载一堆环境**，容器名也是 `yks` 而不是 `python`。
+和 iTyc-Rss 一样：GitHub Actions 会把镜像构建好推到 GitHub Container Registry（GHCR），你**直接拉镜像就能跑，不需要本地构建，也不会在启动时下载依赖**。
 
-```powershell
-git clone https://github.com/tyrantcwj/YKS.git
-cd YKS
-docker compose up -d --build
+镜像地址：
+
+```text
+ghcr.io/tyrantcwj/yks:latest
 ```
 
-只有第一次 `--build` 会花一两分钟装依赖；之后启动是秒开。打开 `http://<主机IP>:8000` 即可。
+> 第一次需要等 GitHub Actions 跑完一次（push 到 main 后约 3–5 分钟），并确保该 package 已设为 Public。之后就能匿名拉取。
 
-仓库里的 `docker-compose.yml` 就是这份：
+最简单的做法（不需要克隆源码）：
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/tyrantcwj/YKS/main/docker-compose.yml
+docker compose up -d
+```
+
+打开 `http://<主机IP>:8000` 即可。仓库里的 `docker-compose.yml` 就是这份（核心就是 `image:` 指向 GHCR，没有 `build:`）：
 
 ```yaml
 services:
   yks:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: yks:latest
+    image: ghcr.io/tyrantcwj/yks:latest
     container_name: yks
     restart: unless-stopped
     ports:
@@ -60,14 +66,10 @@ services:
     environment:
       APP_NAME: "宝可梦卡价格订阅"
       DATABASE_PATH: "/data/app.db"
-      SYNC_INTERVAL_MINUTES: "360"
       TCGDEX_LOCALE: "en"
+      TCGDEX_API_BASE: "${TCGDEX_API_BASE:-https://api.tcgdex.net/v2}"
       AUTH_USERNAME: "${AUTH_USERNAME:-admin}"
       AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
-      YKS_UPDATE_MODE: "${YKS_UPDATE_MODE:-auto}"
-      YKS_UPDATE_REPO: "${YKS_UPDATE_REPO:-tyrantcwj/YKS}"
-      YKS_UPDATE_BRANCH: "${YKS_UPDATE_BRANCH:-main}"
-      YKS_GITHUB_MIRROR_PREFIX: "${YKS_GITHUB_MIRROR_PREFIX:-}"
     volumes:
       - yks-data:/data
 
@@ -75,13 +77,31 @@ volumes:
   yks-data:
 ```
 
-> 如果你之前用的是下面“方式二”那份编排（镜像显示成 `python`、每次启动都在下载依赖），先 `docker compose down` 删掉旧容器，再用本节的方式重新 `up -d --build` 一次即可彻底解决。
+群晖 / 威联通 / 1Panel / CasaOS 等图形界面：新建容器时**镜像填 `ghcr.io/tyrantcwj/yks:latest`**，端口 `8000`，挂载一个卷到 `/data`，即可。镜像支持 `linux/amd64` 和 `linux/arm64`。
 
-## 部署方式二：免构建（仅当面板不能 build 时）
+要升级到最新镜像：
 
-下面这份是给群晖、威联通、1Panel、CasaOS 等**不方便上传构建上下文**的图形界面用的免构建版本。它用 `python:3.12-slim` 基础镜像，第一次启动会下载源码并安装依赖（所以会慢、镜像名是 python），能用但不如方式一干净。**能用方式一就别用这份。**
+```bash
+docker compose pull && docker compose up -d
+```
 
-保存为 `docker-compose.yml`，或者直接粘贴到容器管理器的项目编排里：
+## 部署方式二：本地源码构建（不想用 GHCR 时）
+
+如果你不想用 GHCR（例如网络拉不到 ghcr.io），可以用源码本地构建。依赖在构建时打进镜像，启动同样是秒开、容器名是 `yks`：
+
+```bash
+git clone https://github.com/tyrantcwj/YKS.git
+cd YKS
+docker compose -f docker-compose.build.yml up -d --build
+```
+
+只有第一次 `--build` 会花一两分钟装依赖，之后秒开。
+
+## 部署方式三：免构建 bootstrap（最后的备选）
+
+仅当上面两种都不可用（面板既不能填镜像、也不能 build）时再用这份。它用 `python:3.12-slim` 基础镜像，第一次启动会下载源码并安装依赖（所以慢、镜像名显示成 `python`）。**能用方式一/二就别用这份。**
+
+把下面内容存成 `docker-compose.yml`，或粘贴到容器管理器的项目编排里：
 
 ```yaml
 services:

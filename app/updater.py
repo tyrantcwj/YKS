@@ -26,6 +26,7 @@ REPLACE_NAMES = [
     "README.zh-CN.md",
     ".env.example",
     "docker-compose.yml",
+    "docker-compose.build.yml",
     "Dockerfile",
 ]
 
