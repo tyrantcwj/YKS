@@ -275,7 +275,7 @@ ALERT_WEBHOOK_TIMEOUT_SECONDS=10
   "alerts": [
     {
       "kind": "target",
-      "message": "Furret reached target price: 4.00 <= 5.00",
+      "message": "Furret 达到目标价：4.00 <= 5.00",
       "card_id": "swsh3-136",
       "title": "Furret"
     }

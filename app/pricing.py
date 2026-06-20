@@ -39,7 +39,7 @@ def _alert_for_thresholds(
         and latest_value <= float(target_price)
         and (previous_value is None or previous_value > float(target_price))
     ):
-        message = f"{card_title} reached target price: {latest_value:.2f} <= {float(target_price):.2f}"
+        message = f"{card_title} 达到目标价：{latest_value:.2f} <= {float(target_price):.2f}"
         repository.create_alert(db, subscription["id"], "target", message)
         notifications.append(
             AlertNotification(
@@ -56,8 +56,8 @@ def _alert_for_thresholds(
 
     change = ((latest_value - previous_value) / previous_value) * 100
     if abs(change) >= float(alert_percent):
-        direction = "rose" if change > 0 else "fell"
-        message = f"{card_title} {direction} {abs(change):.1f}% to {latest_value:.2f}"
+        direction = "上涨" if change > 0 else "下跌"
+        message = f"{card_title} {direction} {abs(change):.1f}%，当前 {latest_value:.2f}"
         repository.create_alert(db, subscription["id"], "movement", message)
         notifications.append(
             AlertNotification(

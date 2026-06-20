@@ -46,6 +46,23 @@ PROVIDER_LABELS = {
     "cardmarket": "Cardmarket",
 }
 
+RARITY_LABELS = {
+    "common": "普通",
+    "uncommon": "非普通",
+    "rare": "稀有",
+    "rare holo": "闪稀有",
+    "rare holo vmax": "闪稀有 VMAX",
+    "rare holo v": "闪稀有 V",
+    "rare ultra": "超稀有",
+    "rare secret": "秘密稀有",
+    "promo": "宣传卡",
+}
+
+UPDATE_MODE_LABELS = {
+    "source": "源码更新",
+    "disabled": "已禁用",
+}
+
 
 def variant_label(value: str | None) -> str:
     if not value:
@@ -57,6 +74,19 @@ def provider_label(value: str | None) -> str:
     if not value:
         return "待同步"
     return PROVIDER_LABELS.get(value, value)
+
+
+def rarity_label(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = value.strip().lower()
+    return RARITY_LABELS.get(normalized, value)
+
+
+def update_mode_label(value: str | None) -> str:
+    if not value:
+        return "未知"
+    return UPDATE_MODE_LABELS.get(value, value)
 
 
 def parse_optional_float(value: str | None) -> float | None:
@@ -152,6 +182,7 @@ async def dashboard(request: Request, q: str = ""):
             "display_price": display_price,
             "variant_label": variant_label,
             "provider_label": provider_label,
+            "rarity_label": rarity_label,
         },
     )
 
@@ -197,6 +228,7 @@ async def update_page(request: Request):
             "status": status,
             "error": error,
             "message": "",
+            "update_mode_label": update_mode_label,
         },
     )
 
@@ -220,6 +252,7 @@ async def update_apply_page(request: Request):
             "status": status,
             "error": error,
             "message": message,
+            "update_mode_label": update_mode_label,
         },
     )
 
@@ -337,6 +370,7 @@ async def subscription_detail(request: Request, subscription_id: int):
             "display_price": display_price,
             "variant_label": variant_label,
             "provider_label": provider_label,
+            "rarity_label": rarity_label,
         },
     )
 

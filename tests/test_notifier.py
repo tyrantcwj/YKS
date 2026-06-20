@@ -35,7 +35,7 @@ async def test_send_alert_notifications_skips_when_webhook_is_disabled(monkeypat
         [
             AlertNotification(
                 kind="target",
-                message="Furret reached target price",
+                message="Furret 达到目标价",
                 card_id="swsh3-136",
                 title="Furret",
             )
@@ -56,7 +56,7 @@ async def test_send_alert_notifications_posts_json(monkeypatch):
         [
             AlertNotification(
                 kind="movement",
-                message="Furret rose 10.0% to 1.10",
+                message="Furret 上涨 10.0%，当前 1.10",
                 card_id="swsh3-136",
                 title="Furret",
             )
@@ -72,7 +72,7 @@ async def test_send_alert_notifications_posts_json(monkeypatch):
                 "alerts": [
                     {
                         "kind": "movement",
-                        "message": "Furret rose 10.0% to 1.10",
+                        "message": "Furret 上涨 10.0%，当前 1.10",
                         "card_id": "swsh3-136",
                         "title": "Furret",
                     }

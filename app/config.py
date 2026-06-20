@@ -21,3 +21,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if settings.app_name.strip() == "Pokemon Price Watch":
+    settings.app_name = "宝可梦卡价格订阅"

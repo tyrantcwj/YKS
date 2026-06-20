@@ -4,7 +4,7 @@
   <div class="chart-head">
     <h1>在线更新</h1>
     {% if status %}
-    <span>{{ status.runtime.mode }} / {{ "可用" if status.runtime.supported else "已禁用" }}</span>
+    <span>{{ update_mode_label(status.runtime.mode) }} / {{ "可用" if status.runtime.supported else "已禁用" }}</span>
     {% endif %}
   </div>
 

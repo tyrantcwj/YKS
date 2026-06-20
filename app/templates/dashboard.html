@@ -94,7 +94,7 @@
       <div class="card-head">
         <div>
           <h2>{{ item.nickname or item.name or item.card_id }}</h2>
-          <p>{{ item.set_name or "未知系列" }} · {{ item.rarity or variant_label(item.variant) }}</p>
+          <p>{{ item.set_name or "未知系列" }} · {{ rarity_label(item.rarity) or variant_label(item.variant) }}</p>
         </div>
         <span class="status">{{ "启用" if item.active else "停用" }}</span>
       </div>
