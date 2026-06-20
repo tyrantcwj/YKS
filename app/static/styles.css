@@ -1161,6 +1161,48 @@ th {
   color: var(--accent-dark);
 }
 
+.banner-ok {
+  background: #e8f7f0;
+  border: 1px solid #a9e2c8;
+  color: #1f7a52;
+}
+
+.settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-row {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-row > label {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-row > label > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-row input[type="text"],
+.settings-row input[type="password"] {
+  width: 100%;
+}
+
+.settings-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .card-error {
   color: var(--accent);
   font-size: 12px;

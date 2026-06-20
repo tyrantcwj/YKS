@@ -91,6 +91,11 @@ def init_db() -> None:
                 FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT ''
+            );
+
             CREATE TABLE IF NOT EXISTS psa_certs (
                 subscription_id INTEGER PRIMARY KEY,
                 cert_number TEXT NOT NULL,

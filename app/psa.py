@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from app import settings_store
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ def parse_cert(cert_number: str, body: Any) -> PsaCert | None:
 
 async def fetch_cert(cert_number: str) -> PsaCert | None:
     cert_number = (cert_number or "").strip()
-    token = settings.psa_api_token.strip()
+    token = settings_store.get_str("psa_api_token").strip()
     if not cert_number or not token:
         return None
 

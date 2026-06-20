@@ -13,6 +13,7 @@ from typing import Any
 
 import httpx
 
+from app import settings_store
 from app.config import settings
 from app.models import PricePoint
 
@@ -61,8 +62,8 @@ def _extract_price(payload: Any) -> float | None:
 
 async def fetch_prices(jhs_card_id: str) -> list[PricePoint]:
     jhs_card_id = (jhs_card_id or "").strip()
-    base = (settings.jhs_api_base or "").strip().rstrip("/")
-    if not settings.jhs_enabled or not jhs_card_id or not base:
+    base = settings_store.get_str("jhs_api_base").strip().rstrip("/")
+    if not settings_store.get_bool("jhs_enabled") or not jhs_card_id or not base:
         return []
 
     url = f"{base}/{jhs_card_id}"

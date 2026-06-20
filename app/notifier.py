@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from app import settings_store
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class AlertNotification:
 
 
 async def send_alert_notifications(notifications: list[AlertNotification]) -> None:
-    webhook_url = settings.alert_webhook_url.strip()
+    webhook_url = settings_store.get_str("alert_webhook_url").strip()
     if not webhook_url or not notifications:
         return
 

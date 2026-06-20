@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from app import settings_store
 from app.cardimage import resolve_fallback_image
 from app.config import settings
 from app.models import CardPayload, CardSearchResult, PricePoint
@@ -125,7 +126,7 @@ def _safe_locale(locale: str | None) -> str:
 
 
 def _api_base() -> str:
-    base = (settings.tcgdex_api_base or "https://api.tcgdex.net/v2").strip().rstrip("/")
+    base = (settings_store.get_str("tcgdex_api_base") or "https://api.tcgdex.net/v2").strip().rstrip("/")
     return base or "https://api.tcgdex.net/v2"
 
 

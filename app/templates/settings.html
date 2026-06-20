@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="/">← 返回</a>
+
+{% if saved %}
+<div class="banner banner-ok">
+  <strong>已保存</strong>
+  <span>设置已写入数据库，立即生效，无需重启容器。</span>
+</div>
+{% endif %}
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">运行时配置</p>
+      <h2>设置</h2>
+    </div>
+    <span>覆盖环境变量；留空则用默认值</span>
+  </div>
+
+  <form class="settings-form" action="/settings" method="post">
+    {% for field in fields %}
+    <div class="settings-row">
+      {% if field.kind == "bool" %}
+      <label class="switch-label">
+        <input name="{{ field.key }}" type="checkbox" value="true" {% if field.value|lower in ["1", "true", "yes", "on"] %}checked{% endif %}>
+        <span>{{ field.label }}</span>
+      </label>
+      {% else %}
+      <label>
+        <span>{{ field.label }}</span>
+        <input
+          name="{{ field.key }}"
+          type="{{ 'password' if field.kind == 'password' else 'text' }}"
+          value="{{ field.value }}"
+          placeholder="{{ field.placeholder }}"
+          autocomplete="off"
+          spellcheck="false">
+      </label>
+      {% if field.placeholder %}<small class="settings-hint">{{ field.placeholder }}</small>{% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="settings-actions">
+      <button class="primary-button" type="submit">保存设置</button>
+    </div>
+  </form>
+  <p class="source-foot">提示：这些值是密钥/开关，存放在本地数据库里。如需彻底清除，把对应输入框清空再保存即可（会回退到环境变量默认值）。</p>
+</section>
+{% endblock %}

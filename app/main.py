@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import repository
+from app import settings_store
 from app.chart import build_price_chart, build_trend_chart
 from app.config import settings
 from app.db import backup_database, get_db, init_db
@@ -489,6 +490,42 @@ async def update_apply_page(request: Request):
             "update_mode_label": update_mode_label,
         },
     )
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, saved: str = ""):
+    fields = [
+        {
+            "key": key,
+            "label": label,
+            "kind": kind,
+            "placeholder": placeholder,
+            "value": settings_store.current_value(key),
+        }
+        for key, (label, kind, placeholder) in settings_store.EDITABLE_SETTINGS.items()
+    ]
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "settings": settings,
+            "fields": fields,
+            "saved": saved == "1",
+        },
+    )
+
+
+@app.post("/settings")
+async def save_settings(request: Request):
+    form = await request.form()
+    values: dict[str, str] = {}
+    for key, (_, kind, _) in settings_store.EDITABLE_SETTINGS.items():
+        if kind == "bool":
+            values[key] = "true" if form.get(key) else "false"
+        else:
+            values[key] = (form.get(key) or "").strip()
+    settings_store.set_values(values)
+    return flash_redirect("/settings?saved=1")
 
 
 @app.get("/export/subscriptions.csv")

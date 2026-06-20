@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from app import settings_store
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ async def resolve_fallback_image(
     params = {"q": " ".join(query_parts), "pageSize": 25}
 
     headers: dict[str, str] = {}
-    api_key = settings.pokemontcg_api_key.strip()
+    api_key = settings_store.get_str("pokemontcg_api_key").strip()
     if api_key:
         headers["X-Api-Key"] = api_key
 
