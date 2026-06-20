@@ -40,7 +40,9 @@ def _is_chinese(query: str) -> bool:
 
 
 def _interleave(buckets: list[list[CardSearchResult]], limit: int) -> list[CardSearchResult]:
-    seen: set[str] = set()
+    # Key by (locale, card_id): the same TCGdex id can appear under several
+    # locales (different localized names) and we want each language kept.
+    seen: set[tuple[str, str]] = set()
     ordered: list[CardSearchResult] = []
     depth = max((len(bucket) for bucket in buckets), default=0)
     for index in range(depth):
@@ -48,9 +50,10 @@ def _interleave(buckets: list[list[CardSearchResult]], limit: int) -> list[CardS
             if index >= len(bucket):
                 continue
             result = bucket[index]
-            if result.card_id in seen:
+            key = (result.tcgdex_locale, result.card_id)
+            if key in seen:
                 continue
-            seen.add(result.card_id)
+            seen.add(key)
             ordered.append(result)
             if len(ordered) >= limit:
                 return ordered

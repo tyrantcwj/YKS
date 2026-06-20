@@ -251,14 +251,15 @@ async def search_cards(query: str, limit: int = 24) -> list[CardSearchResult]:
         )
     responses: list[tuple[str, Any]] = [item for item in fetched if item is not None]
 
-    # Dedup by card_id (across locales) so the same printing never eats multiple
-    # slots, and bucket per locale so we can interleave them below.
-    seen: set[str] = set()
+    # Bucket per locale. Dedup only *within* a locale (the same card can legitly
+    # exist in several locales — zh-tw and ja share IDs for Asian releases — and
+    # collapsing across locales would undercount e.g. the 日文 filter).
     buckets: list[list[CardSearchResult]] = []
     for locale, cards in responses:
         if not isinstance(cards, list):
             continue
         bucket: list[CardSearchResult] = []
+        seen: set[str] = set()
         for card in cards:
             if not isinstance(card, dict) or not card.get("id"):
                 continue

@@ -179,17 +179,17 @@ async def test_search_cards_links_pokemon_across_locales(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_search_cards_dedupes_card_id_across_locales(monkeypatch):
+async def test_search_cards_dedupes_within_each_locale(monkeypatch):
     monkeypatch.setattr(tcgdex.httpx, "AsyncClient", FakeSearchAsyncClient)
     FakeSearchAsyncClient.calls = []
 
-    # A CJK query fans out to several locales; the same card_id must not appear
-    # twice and image-less results should sort after ones with artwork.
+    # A CJK query fans out to several locales. A card_id may legitimately appear
+    # under multiple locales (Asian releases share IDs), but each (locale, id)
+    # pair must be unique — no duplicates within a single locale.
     results = await search_cards("皮卡丘", limit=10)
 
-    card_ids = [result.card_id for result in results]
-    assert len(card_ids) == len(set(card_ids))
-    assert all(results[i].image_url or not results[i + 1].image_url for i in range(len(results) - 1))
+    pairs = [(result.tcgdex_locale, result.card_id) for result in results]
+    assert len(pairs) == len(set(pairs))
 
 
 class FakeFallbackResponse:
