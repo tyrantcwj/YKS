@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     pikaqian_api_key: str = ""
     pikaqian_api_base: str = ""
     chs_image_base: str = ""
+    ja_image_base: str = ""
     auth_username: str = "admin"
     auth_password: str = ""
     alert_webhook_url: str = ""

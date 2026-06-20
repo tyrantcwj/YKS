@@ -4,17 +4,18 @@ A subscription's ``card_id`` carries a provider prefix so we know where to
 fetch metadata/prices from:
 
 * ``chs:<id>``  – bundled Simplified Chinese dataset (:mod:`app.chs`), no prices
+* ``jp:<id>``   – bundled official Japanese dataset (:mod:`app.ja`), no prices
 * ``pika:<id>`` – PikaQian online API (:mod:`app.pikaqian`), metadata + prices
 * anything else – TCGdex (:mod:`app.tcgdex`), the default
 
-Search merges all three sources, interleaved so Simplified cards are visible
-for Chinese queries instead of being crowded out by TCGdex's larger zh-tw/en/ja
-catalogs.
+Search merges all sources, interleaved so Simplified/official-Japanese cards are
+visible for Chinese/Japanese queries instead of being crowded out by (or, for
+Japanese, missing from) TCGdex's partially-localized catalog.
 """
 
 import re
 
-from app import chs, pikaqian, pokemon_names
+from app import chs, ja, pikaqian, pokemon_names
 from app.models import CardPayload, CardSearchResult
 from app.tcgdex import CardNotFoundError, fetch_card as fetch_tcgdex_card, search_cards as search_tcgdex
 
@@ -26,6 +27,11 @@ async def fetch_card_payload(card_id: str, locale: str | None = None) -> CardPay
         payload = chs.get_card(card_id)
         if payload is None:
             raise CardNotFoundError(f"国行卡库找不到 {card_id}")
+        return payload
+    if card_id.startswith(ja.CARD_ID_PREFIX):
+        payload = ja.get_card(card_id)
+        if payload is None:
+            raise CardNotFoundError(f"日文卡库找不到 {card_id}")
         return payload
     if card_id.startswith(pikaqian.CARD_ID_PREFIX):
         payload = await pikaqian.fetch_card(card_id)
@@ -76,12 +82,15 @@ async def search_all(query: str, limit: int | None = None) -> list[CardSearchRes
 
     chs_extra = [t for t in [translated.get("zh-cn"), translated.get("zh-tw")] if t]
     chs_results = chs.search(query, cap, extra_terms=chs_extra)
+    ja_extra = [t for t in [translated.get("ja")] if t]
+    ja_results = ja.search(query, cap, extra_terms=ja_extra)
     pika_results = await pikaqian.search(query, translated.get("en"), min(cap, 50))
 
     # Lead with Simplified sources for Chinese queries so 国行 cards surface;
-    # otherwise keep TCGdex first.
+    # otherwise keep TCGdex first. The bundled official-Japanese set rides along
+    # so the 日文 filter reflects real coverage, not TCGdex's partial localization.
     if _is_chinese(query):
-        buckets = [chs_results, pika_results, tcg_results]
+        buckets = [chs_results, ja_results, pika_results, tcg_results]
     else:
-        buckets = [tcg_results, chs_results, pika_results]
+        buckets = [tcg_results, ja_results, chs_results, pika_results]
     return _interleave(buckets, cap)

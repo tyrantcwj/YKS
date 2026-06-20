@@ -54,6 +54,11 @@ EDITABLE_SETTINGS: dict[str, tuple[str, str, str]] = {
         "text",
         "默认走 jsDelivr，被墙时可换成你的 GitHub 镜像（以 / 结尾）",
     ),
+    "ja_image_base": (
+        "日文卡图地址前缀",
+        "text",
+        "默认走官方 pokemon-card.com，加载慢/被墙时可换成你的镜像（以 / 结尾）",
+    ),
     "alert_webhook_url": (
         "提醒 Webhook 地址",
         "text",

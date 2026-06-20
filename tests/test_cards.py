@@ -47,13 +47,14 @@ async def test_search_all_leads_with_simplified_for_chinese(monkeypatch):
     monkeypatch.setattr(cards, "search_tcgdex", fake_tcgdex)
     monkeypatch.setattr(cards.pikaqian, "search", fake_pika)
     monkeypatch.setattr(cards.chs, "search", lambda q, limit=24, extra_terms=None: [_csr("chs:1", "zh-cn")])
+    monkeypatch.setattr(cards.ja, "search", lambda q, limit=24, extra_terms=None: [_csr("jp:1", "ja")])
 
     results = await cards.search_all("喷火龙", limit=10)
     ids = [r.card_id for r in results]
-    # Chinese query: chs first, then pika, then tcgdex; no duplicates.
+    # Chinese query: chs first, then ja, then pika, then tcgdex; no duplicates.
     assert ids[0] == "chs:1"
-    assert ids[1] == "pika:1"
-    assert set(ids) == {"chs:1", "pika:1", "t1", "t2"}
+    assert ids[1] == "jp:1"
+    assert set(ids) == {"chs:1", "jp:1", "pika:1", "t1", "t2"}
     assert len(ids) == len(set(ids))
 
 
@@ -68,6 +69,7 @@ async def test_search_all_leads_with_tcgdex_for_english(monkeypatch):
     monkeypatch.setattr(cards, "search_tcgdex", fake_tcgdex)
     monkeypatch.setattr(cards.pikaqian, "search", fake_pika)
     monkeypatch.setattr(cards.chs, "search", lambda q, limit=24, extra_terms=None: [_csr("chs:1", "zh-cn")])
+    monkeypatch.setattr(cards.ja, "search", lambda q, limit=24, extra_terms=None: [_csr("jp:1", "ja")])
 
     results = await cards.search_all("charizard", limit=10)
     assert results[0].card_id == "t1"
