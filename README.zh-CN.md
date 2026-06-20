@@ -4,7 +4,7 @@
 
 ## 功能
 
-- 按卡名搜索 TCGdex 卡片
+- 按卡名搜索 TCGdex 卡片（中文搜索自动联动英文 / 日文 / 繁中同名卡）
 - 直接用 TCGdex card ID 添加订阅，例如 `swsh3-136`
 - 自动同步 TCGplayer 美元价格和 Cardmarket 欧元价格
 - 支持 normal / reverse / holo / standard 等版本
@@ -493,6 +493,19 @@ pikachu
 charizard
 furret
 ```
+
+### 中文搜索自动联动多语言
+
+输入中文名时会按「宝可梦身份」联动检索英文 / 日文 / 繁体中文的卡片，而不是逐字翻译。例如搜索 `喷火龙` 会同时命中：
+
+```text
+Charizard（英文）
+リザードン（日文）
+噴火龍（繁体）
+喷火龙（简体原文保留）
+```
+
+结果会把几种语言交叉排列，方便对比不同语区的同一只宝可梦。名称对照表来自宝可梦官方多语言数据（见 `scripts/build_pokemon_names.py`，数据文件 `app/data/pokemon_names.json`，覆盖全国图鉴 1025 只），如需更新可重新运行该脚本。
 
 ## 本地开发
 

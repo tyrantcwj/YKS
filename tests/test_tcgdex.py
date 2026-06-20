@@ -159,6 +159,26 @@ async def test_search_cards_uses_japanese_locale_for_japanese_query(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_search_cards_links_pokemon_across_locales(monkeypatch):
+    monkeypatch.setattr(tcgdex.httpx, "AsyncClient", FakeSearchAsyncClient)
+    FakeSearchAsyncClient.calls = []
+
+    # 喷火龙 should query each locale by the *same Pokemon's* localized name
+    # (Charizard / リザードン / 噴火龍), not by sending Chinese text everywhere.
+    await search_cards("喷火龙", limit=10)
+
+    terms = {
+        call["url"].split("/v2/", 1)[1].split("/", 1)[0]: call["params"]["name"]
+        for call in FakeSearchAsyncClient.calls
+    }
+    assert terms["en"] == "like:Charizard"
+    assert terms["ja"] == "like:リザードン"
+    assert terms["zh-tw"] == "like:噴火龍"
+    # The user's own (Simplified) text is preserved for the zh-cn endpoint.
+    assert terms["zh-cn"] == "like:喷火龙"
+
+
+@pytest.mark.asyncio
 async def test_search_cards_dedupes_card_id_across_locales(monkeypatch):
     monkeypatch.setattr(tcgdex.httpx, "AsyncClient", FakeSearchAsyncClient)
     FakeSearchAsyncClient.calls = []

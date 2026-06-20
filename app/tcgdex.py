@@ -1,12 +1,12 @@
+import asyncio
 import json
 import logging
 import re
-from dataclasses import replace
 from typing import Any
 
 import httpx
 
-from app import settings_store
+from app import pokemon_names, settings_store
 from app.cardimage import resolve_fallback_image
 from app.config import settings
 from app.models import CardPayload, CardSearchResult, PricePoint
@@ -181,61 +181,108 @@ async def fetch_card(card_id: str, locale: str | None = None) -> CardPayload:
     )
 
 
+def _query_script_locales(query: str) -> set[str]:
+    """Locales whose script matches the raw query, where we keep the user's
+    exact text so partial searches (``char`` -> Charmander/Charizard,
+    ``ピカ`` -> ピカチュウ系) still work. For Han queries we return an empty set
+    and let exact-name equality decide, so a Simplified query can still pull the
+    Traditional card via its linked name (and vice versa)."""
+
+    if re.search(r"[\u3040-\u30ff]", query):
+        return {"ja"}
+    if re.search(r"[\u4e00-\u9fff]", query):
+        return set()
+    return {_safe_locale(settings.tcgdex_locale), "en"}
+
+
+def _locale_term(locale: str, query: str, translated: dict[str, str], script_locales: set[str]) -> str:
+    """Search term for a locale: the linked Pokemon name when known, else the
+    raw query. This is what makes a 喷火龙 search also hit ``Charizard`` (en)
+    and ``リザードン`` (ja) instead of sending Chinese text to every locale.
+
+    The raw query is preserved for the user's own language/script (and when it
+    already equals this locale's name) so partial matches aren't narrowed to a
+    single species."""
+
+    name = translated.get(locale)
+    if not name or not name.strip():
+        return query
+    if locale in script_locales:
+        return query
+    if pokemon_names._normalize(query) == pokemon_names._normalize(name):
+        return query
+    return name.strip()
+
+
+async def _fetch_locale(client: httpx.AsyncClient, locale: str, term: str) -> tuple[str, Any] | None:
+    # `like:` makes TCGdex do a case-insensitive substring match instead of the
+    # near-exact match a bare `name=` performs, which is why partial queries
+    # used to "find nothing".
+    url = f"{_api_base()}/{locale}/cards"
+    try:
+        response = await client.get(url, params={"name": f"like:{term}"})
+    except httpx.HTTPError:
+        logger.debug("Search failed for locale %s", locale, exc_info=True)
+        return None
+    if response.status_code >= 400:
+        return None
+    return (locale, response.json())
+
+
 async def search_cards(query: str, limit: int = 24) -> list[CardSearchResult]:
     query = query.strip()
     if not query:
         return []
 
     locales = _search_locales(query)
-    # `like:` makes TCGdex do a case-insensitive substring match instead of the
-    # near-exact match a bare `name=` performs, which is why partial queries
-    # used to "find nothing".
-    params = {"name": f"like:{query}"}
+    # Link the query to the same Pokemon across locales (识别物种, 非逐字翻译).
+    translated = pokemon_names.localized_names(query)
+    script_locales = _query_script_locales(query)
     per_locale = max(limit, 12)
 
     async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
-        responses: list[tuple[str, Any]] = []
-        for locale in locales:
-            url = f"{_api_base()}/{locale}/cards"
-            try:
-                response = await client.get(url, params=params)
-            except httpx.HTTPError:
-                logger.debug("Search failed for locale %s", locale, exc_info=True)
-                continue
-            if response.status_code == 404:
-                continue
-            if response.status_code >= 400:
-                continue
-            responses.append((locale, response.json()))
+        fetched = await asyncio.gather(
+            *(
+                _fetch_locale(client, locale, _locale_term(locale, query, translated, script_locales))
+                for locale in locales
+            )
+        )
+    responses: list[tuple[str, Any]] = [item for item in fetched if item is not None]
 
-    # Dedup by card_id (not locale+id) so the same physical card never eats
-    # multiple result slots. Each locale gets its own budget so a CJK search
-    # returns a mix instead of being filled entirely by the first locale.
-    results: dict[str, CardSearchResult] = {}
+    # Dedup by card_id (across locales) so the same printing never eats multiple
+    # slots, and bucket per locale so we can interleave them below.
+    seen: set[str] = set()
+    buckets: list[list[CardSearchResult]] = []
     for locale, cards in responses:
         if not isinstance(cards, list):
             continue
-        added = 0
+        bucket: list[CardSearchResult] = []
         for card in cards:
             if not isinstance(card, dict) or not card.get("id"):
                 continue
             card_id = str(card["id"])
-            brief_image = _brief_image_url(card)
-            existing = results.get(card_id)
-            if existing is None:
-                results[card_id] = CardSearchResult(
+            if card_id in seen:
+                continue
+            seen.add(card_id)
+            bucket.append(
+                CardSearchResult(
                     card_id=card_id,
                     name=str(card.get("name") or card_id),
-                    image_url=brief_image,
+                    image_url=_brief_image_url(card),
                     tcgdex_locale=locale,
                     local_id=str(card["localId"]) if card.get("localId") is not None else None,
                 )
-                added += 1
-            elif existing.image_url is None and brief_image:
-                results[card_id] = replace(existing, image_url=brief_image)
-            if added >= per_locale:
+            )
+            if len(bucket) >= per_locale:
                 break
+        buckets.append(bucket)
 
-    # Keep cards that have artwork first so results don't look "empty".
-    ordered = sorted(results.values(), key=lambda result: 0 if result.image_url else 1)
-    return ordered[:limit]
+    # Interleave locales (round-robin) so a Chinese search surfaces a mix of
+    # 中/英/日 cards instead of being filled by the first locale, while still
+    # keeping cards with artwork ahead of image-less ones globally.
+    scored: list[tuple[tuple[int, int, int], CardSearchResult]] = []
+    for locale_index, bucket in enumerate(buckets):
+        for round_index, result in enumerate(bucket):
+            scored.append(((0 if result.image_url else 1, round_index, locale_index), result))
+    scored.sort(key=lambda item: item[0])
+    return [result for _, result in scored][:limit]
