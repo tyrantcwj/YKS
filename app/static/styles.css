@@ -1254,6 +1254,31 @@ th {
   word-break: break-all;
 }
 
+.db-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.db-grid > label {
+  display: grid;
+  gap: 6px;
+}
+
+.db-grid > label > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.db-grid input {
+  width: 100%;
+}
+
+.db-grid-wide {
+  grid-column: 1 / -1;
+}
+
 .db-pill {
   align-items: center;
   border-radius: 999px;
@@ -1906,5 +1931,9 @@ th {
 
   .settings-hint code {
     white-space: normal;
+  }
+
+  .db-grid {
+    grid-template-columns: 1fr;
   }
 }

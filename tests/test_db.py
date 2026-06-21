@@ -71,3 +71,29 @@ def test_set_database_url_empty_keeps_sqlite():
     db.set_database_url("")
     assert db.dialect() == "sqlite"
     assert json.loads(db._INSTANCE_FILE.read_text(encoding="utf-8"))["database_url"] == ""
+
+
+def test_build_mysql_url_encodes_special_chars():
+    url = db.build_mysql_url("10.0.0.5", "3306", "root", "p@ss:w/rd.", "yks")
+    assert url == "mysql://root:p%40ss%3Aw%2Frd.@10.0.0.5:3306/yks"
+    # And it must round-trip back through urlparse without the cast error.
+    parts = db.parse_mysql_url(url)
+    assert parts["host"] == "10.0.0.5"
+    assert parts["port"] == "3306"
+    assert parts["user"] == "root"
+    assert parts["password"] == "p@ss:w/rd."
+    assert parts["name"] == "yks"
+
+
+def test_build_mysql_url_empty_host_means_sqlite():
+    assert db.build_mysql_url("", "3306", "root", "x", "yks") == ""
+
+
+def test_build_mysql_url_rejects_bad_port():
+    with pytest.raises(ValueError):
+        db.build_mysql_url("h", "Tyrantcwj1996.", "root", "x", "yks")
+
+
+def test_build_mysql_url_requires_name():
+    with pytest.raises(ValueError):
+        db.build_mysql_url("h", "3306", "root", "x", "")

@@ -21,10 +21,12 @@ from app.chart import build_price_chart, build_trend_chart
 from app.config import settings
 from app.db import (
     backup_database,
+    build_mysql_url,
     dialect as db_dialect,
     effective_database_url,
     get_db,
     init_db,
+    parse_mysql_url,
     set_database_url,
 )
 from app.models import PricePoint
@@ -511,12 +513,12 @@ async def update_apply_page(request: Request):
 def _db_status() -> dict[str, str]:
     url = effective_database_url()
     if db_dialect() == "mysql":
-        parsed = urlparse(url.replace("mysql+pymysql://", "mysql://"))
-        host = parsed.hostname or "?"
-        port = parsed.port or 3306
-        name = (parsed.path or "").lstrip("/") or "?"
-        return {"backend": "mysql", "summary": f"MySQL · {host}:{port}/{name}", "url": url}
-    return {"backend": "sqlite", "summary": f"SQLite · {settings.database_path}", "url": url}
+        parts = parse_mysql_url(url)
+        host = parts["host"] or "?"
+        name = parts["name"] or "?"
+        return {"backend": "mysql", "summary": f"MySQL · {host}:{parts['port']}/{name}", "form": parts}
+    blank = {"host": "", "port": "3306", "user": "", "password": "", "name": ""}
+    return {"backend": "sqlite", "summary": f"SQLite · {settings.database_path}", "form": blank}
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -548,8 +550,14 @@ async def settings_page(request: Request, saved: str = "", db_saved: str = "", d
 @app.post("/settings/database")
 async def save_database_settings(request: Request):
     form = await request.form()
-    url = (form.get("database_url") or "").strip()
     try:
+        url = build_mysql_url(
+            host=form.get("db_host") or "",
+            port=form.get("db_port") or "",
+            user=form.get("db_user") or "",
+            password=form.get("db_password") or "",
+            name=form.get("db_name") or "",
+        )
         set_database_url(url)
     except Exception as exc:  # noqa: BLE001 - surface any connect/init failure to the UI
         message = str(exc) or exc.__class__.__name__

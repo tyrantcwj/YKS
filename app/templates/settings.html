@@ -33,28 +33,43 @@
   </div>
 
   <form class="settings-form" action="/settings/database" method="post">
-    <div class="settings-row">
+    <div class="db-grid">
       <label>
-        <span>MySQL 连接地址</span>
-        <input
-          name="database_url"
-          type="text"
-          value="{{ db.url if db.backend == 'mysql' else '' }}"
-          placeholder="mysql://用户名:密码@主机:3306/数据库名"
-          autocomplete="off"
-          spellcheck="false"
-          autocapitalize="off">
+        <span>主机地址</span>
+        <input name="db_host" type="text" value="{{ db.form.host }}"
+          placeholder="10.0.100.202" autocomplete="off" spellcheck="false" autocapitalize="off">
       </label>
-      <small class="settings-hint">
-        留空 = 用本地 SQLite（默认）。填 <code>mysql://user:pass@host:3306/yks</code> 即切到你的 MySQL。
-        需要 MySQL 8.0.13+；保存时会先测试连接并自动建表，成功才切换，无需重启。
-      </small>
+      <label>
+        <span>端口</span>
+        <input name="db_port" type="text" inputmode="numeric" value="{{ db.form.port }}"
+          placeholder="3306" autocomplete="off">
+      </label>
+      <label>
+        <span>用户名</span>
+        <input name="db_user" type="text" value="{{ db.form.user }}"
+          placeholder="root" autocomplete="off" spellcheck="false" autocapitalize="off">
+      </label>
+      <label>
+        <span>密码</span>
+        <input name="db_password" type="password" value="{{ db.form.password }}"
+          placeholder="数据库密码" autocomplete="off">
+      </label>
+      <label class="db-grid-wide">
+        <span>数据库名</span>
+        <input name="db_name" type="text" value="{{ db.form.name }}"
+          placeholder="yks" autocomplete="off" spellcheck="false" autocapitalize="off">
+      </label>
     </div>
+    <small class="settings-hint">
+      <strong>主机地址留空 = 用本地 SQLite（默认）。</strong>
+      填好各项点「测试并保存」，系统会先测连接、自动建表，成功才切换，无需重启。
+      密码里的特殊字符（<code>@ : / . #</code> 等）会自动处理，不用手动转义。需要 MySQL 8.0.13+。
+    </small>
     <div class="settings-actions">
       <button class="primary-button" type="submit">测试并保存</button>
     </div>
   </form>
-  <p class="source-foot">提示：连接串里含密码，请勿截图外传。切到 MySQL 后，旧的 SQLite 数据不会自动迁移；如需保留历史，请先在 SQLite 模式下用「导出 CSV」备份。</p>
+  <p class="source-foot">提示：密码以明文存放在容器的 <code>data/instance.json</code>，请勿把页面截图外传。切到 MySQL 后旧的 SQLite 数据不会自动迁移；如需保留历史，请先在 SQLite 模式下用「订阅导出 / 价格导出」存 CSV。</p>
 </section>
 
 <section class="panel">

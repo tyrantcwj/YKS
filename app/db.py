@@ -26,7 +26,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from app.config import settings
 
@@ -65,6 +65,48 @@ def dialect() -> str:
     if url.startswith(("mysql://", "mysql+pymysql://")):
         return "mysql"
     return "sqlite"
+
+
+def build_mysql_url(host: str, port: str, user: str, password: str, name: str) -> str:
+    """Assemble a safe ``mysql://`` URL from separate fields.
+
+    Username/password are percent-encoded so special characters (``@ : / . #``
+    etc.) can't corrupt parsing. An empty host means "use SQLite" and yields "".
+    """
+
+    host = (host or "").strip()
+    if not host:
+        return ""
+    port = (str(port).strip() or "3306")
+    if not port.isdigit():
+        raise ValueError("端口必须是数字，例如 3306")
+    name = (name or "").strip().lstrip("/")
+    if not name:
+        raise ValueError("请填写数据库名")
+    userinfo = quote((user or "").strip(), safe="")
+    if password:
+        userinfo += ":" + quote(password, safe="")
+    return f"mysql://{userinfo}@{host}:{port}/{name}"
+
+
+def parse_mysql_url(url: str) -> dict[str, str]:
+    """Best-effort split of a stored URL back into form fields (tolerant)."""
+
+    blank = {"host": "", "port": "3306", "user": "", "password": "", "name": ""}
+    url = (url or "").strip()
+    if not url:
+        return blank
+    try:
+        parsed = urlparse(url.replace("mysql+pymysql://", "mysql://"))
+        return {
+            "host": parsed.hostname or "",
+            "port": str(parsed.port or 3306),
+            "user": unquote(parsed.username or ""),
+            "password": unquote(parsed.password or ""),
+            "name": (parsed.path or "").lstrip("/"),
+        }
+    except (ValueError, TypeError):
+        return blank
 
 
 class _Conn:
