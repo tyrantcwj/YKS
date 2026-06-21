@@ -74,7 +74,7 @@ def _load() -> dict[str, str]:
     if _cache is None:
         try:
             with get_db() as db:
-                rows = db.execute("SELECT key, value FROM app_settings").fetchall()
+                rows = db.execute("SELECT `key`, value FROM app_settings").fetchall()
             _cache = {row["key"]: row["value"] for row in rows}
         except sqlite3.Error:
             logger.debug("app_settings not readable yet", exc_info=True)
@@ -119,14 +119,18 @@ def current_value(key: str) -> str:
 
 def set_values(values: dict[str, str]) -> None:
     with get_db() as db:
+        if getattr(db, "dialect", "sqlite") == "mysql":
+            upsert = (
+                "INSERT INTO app_settings (`key`, value) VALUES (?, ?) "
+                "ON DUPLICATE KEY UPDATE value = VALUES(value)"
+            )
+        else:
+            upsert = (
+                "INSERT INTO app_settings (`key`, value) VALUES (?, ?) "
+                "ON CONFLICT(`key`) DO UPDATE SET value = excluded.value"
+            )
         for key, value in values.items():
             if key not in EDITABLE_SETTINGS:
                 continue
-            db.execute(
-                """
-                INSERT INTO app_settings (key, value) VALUES (?, ?)
-                ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                """,
-                (key, value),
-            )
+            db.execute(upsert, (key, value))
     invalidate()

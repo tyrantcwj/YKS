@@ -1246,6 +1246,38 @@ th {
   justify-content: flex-end;
 }
 
+.settings-hint code {
+  background: #f1f4f8;
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 1px 5px;
+  word-break: break-all;
+}
+
+.db-pill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 5px 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-pill-sqlite {
+  background: #eef2f8;
+  color: #475569;
+}
+
+.db-pill-mysql {
+  background: #e8f7f0;
+  color: #1f7a52;
+}
+
 .card-error {
   color: var(--accent);
   font-size: 12px;
@@ -1822,5 +1854,57 @@ th {
 @media (max-width: 640px) {
   .psa-meta {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---- mobile refinements ---- */
+@media (max-width: 600px) {
+  /* 16px avoids iOS Safari auto-zoom on focus */
+  input[type="text"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Filter chips wrap; the in-results search box gets its own full-width row */
+  .result-search {
+    flex: 1 1 100%;
+    min-width: 0;
+    order: 2;
+  }
+
+  .filter-chip {
+    align-items: center;
+    display: inline-flex;
+    min-height: 36px;
+  }
+
+  /* Roomier tap targets for primary actions and the top nav */
+  .primary-button,
+  .top-actions a,
+  .top-actions .sync-all {
+    min-height: 40px;
+  }
+
+  .section-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .db-pill {
+    font-size: 11px;
+  }
+
+  /* Search result cards: a touch more breathing room on phones */
+  .search-result {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .settings-hint code {
+    white-space: normal;
   }
 }

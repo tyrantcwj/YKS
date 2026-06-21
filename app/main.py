@@ -6,7 +6,7 @@ import tempfile
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus, urlparse
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -19,7 +19,14 @@ from app import repository
 from app import settings_store
 from app.chart import build_price_chart, build_trend_chart
 from app.config import settings
-from app.db import backup_database, get_db, init_db
+from app.db import (
+    backup_database,
+    dialect as db_dialect,
+    effective_database_url,
+    get_db,
+    init_db,
+    set_database_url,
+)
 from app.models import PricePoint
 from app.pricing import (
     display_price,
@@ -501,8 +508,19 @@ async def update_apply_page(request: Request):
     )
 
 
+def _db_status() -> dict[str, str]:
+    url = effective_database_url()
+    if db_dialect() == "mysql":
+        parsed = urlparse(url.replace("mysql+pymysql://", "mysql://"))
+        host = parsed.hostname or "?"
+        port = parsed.port or 3306
+        name = (parsed.path or "").lstrip("/") or "?"
+        return {"backend": "mysql", "summary": f"MySQL · {host}:{port}/{name}", "url": url}
+    return {"backend": "sqlite", "summary": f"SQLite · {settings.database_path}", "url": url}
+
+
 @app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, saved: str = ""):
+async def settings_page(request: Request, saved: str = "", db_saved: str = "", db_error: str = ""):
     fields = [
         {
             "key": key,
@@ -520,8 +538,23 @@ async def settings_page(request: Request, saved: str = ""):
             "settings": settings,
             "fields": fields,
             "saved": saved == "1",
+            "db": _db_status(),
+            "db_saved": db_saved == "1",
+            "db_error": db_error,
         },
     )
+
+
+@app.post("/settings/database")
+async def save_database_settings(request: Request):
+    form = await request.form()
+    url = (form.get("database_url") or "").strip()
+    try:
+        set_database_url(url)
+    except Exception as exc:  # noqa: BLE001 - surface any connect/init failure to the UI
+        message = str(exc) or exc.__class__.__name__
+        return flash_redirect(f"/settings?db_error={quote(message[:300])}")
+    return flash_redirect("/settings?db_saved=1")
 
 
 @app.post("/settings")
@@ -553,6 +586,11 @@ async def export_prices_csv():
 
 @app.get("/export/database.sqlite")
 async def export_database_sqlite():
+    if db_dialect() == "mysql":
+        raise HTTPException(
+            status_code=400,
+            detail="当前使用 MySQL，无法导出 SQLite 文件，请用 mysqldump 备份 MySQL 数据库。",
+        )
     handle = tempfile.NamedTemporaryFile(
         prefix="pokemon-price-watch-",
         suffix=".sqlite",

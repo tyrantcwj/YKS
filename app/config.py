@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "宝可梦卡价格订阅"
     database_path: str = "data/app.db"
+    database_url: str = ""
     sync_interval_minutes: int = 360
     tcgdex_locale: str = "en"
     tcgdex_api_base: str = "https://api.tcgdex.net/v2"

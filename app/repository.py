@@ -4,6 +4,10 @@ from app.models import CardPayload, PricePoint
 from app.psa import PsaCert
 
 
+def _dialect(db) -> str:
+    return getattr(db, "dialect", "sqlite")
+
+
 def list_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute(
         """
@@ -67,6 +71,25 @@ def create_subscription(
     alert_percent: float | None,
     tcgdex_locale: str = "",
 ) -> int:
+    params = (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale)
+    if _dialect(db) == "mysql":
+        db.execute(
+            """
+            INSERT INTO subscriptions (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                nickname = VALUES(nickname),
+                variant = VALUES(variant),
+                tcgdex_locale = VALUES(tcgdex_locale),
+                target_price = VALUES(target_price),
+                alert_percent = VALUES(alert_percent),
+                active = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            params,
+        )
+        row = db.execute("SELECT id FROM subscriptions WHERE card_id = ?", (card_id,)).fetchone()
+        return int(row["id"])
     cursor = db.execute(
         """
         INSERT INTO subscriptions (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale)
@@ -81,7 +104,7 @@ def create_subscription(
             updated_at = CURRENT_TIMESTAMP
         RETURNING id
         """,
-        (card_id, nickname, variant, target_price, alert_percent, tcgdex_locale),
+        params,
     )
     return int(cursor.fetchone()["id"])
 
@@ -132,8 +155,30 @@ def set_jhs_card_id(db: sqlite3.Connection, subscription_id: int, jhs_card_id: s
 
 
 def save_psa_cert(db: sqlite3.Connection, subscription_id: int, cert: PsaCert) -> None:
-    db.execute(
+    if _dialect(db) == "mysql":
+        upsert = """
+        INSERT INTO psa_certs (
+            subscription_id, cert_number, grade, subject, year, brand,
+            card_number, variety, spec_id, population_total, population_higher,
+            fetched_at, raw_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+        ON DUPLICATE KEY UPDATE
+            cert_number = VALUES(cert_number),
+            grade = VALUES(grade),
+            subject = VALUES(subject),
+            year = VALUES(year),
+            brand = VALUES(brand),
+            card_number = VALUES(card_number),
+            variety = VALUES(variety),
+            spec_id = VALUES(spec_id),
+            population_total = VALUES(population_total),
+            population_higher = VALUES(population_higher),
+            fetched_at = CURRENT_TIMESTAMP,
+            raw_json = VALUES(raw_json)
         """
+    else:
+        upsert = """
         INSERT INTO psa_certs (
             subscription_id, cert_number, grade, subject, year, brand,
             card_number, variety, spec_id, population_total, population_higher,
@@ -153,7 +198,9 @@ def save_psa_cert(db: sqlite3.Connection, subscription_id: int, cert: PsaCert) -
             population_higher = excluded.population_higher,
             fetched_at = CURRENT_TIMESTAMP,
             raw_json = excluded.raw_json
-        """,
+        """
+    db.execute(
+        upsert,
         (
             subscription_id,
             cert.cert_number,
@@ -205,8 +252,20 @@ def active_subscriptions(db: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def save_card_payload(db: sqlite3.Connection, subscription_id: int, payload: CardPayload) -> None:
-    db.execute(
+    if _dialect(db) == "mysql":
+        upsert = """
+        INSERT INTO cards (card_id, name, image_url, set_name, rarity, last_synced_at, raw_json)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+        ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            image_url = VALUES(image_url),
+            set_name = VALUES(set_name),
+            rarity = VALUES(rarity),
+            last_synced_at = CURRENT_TIMESTAMP,
+            raw_json = VALUES(raw_json)
         """
+    else:
+        upsert = """
         INSERT INTO cards (card_id, name, image_url, set_name, rarity, last_synced_at, raw_json)
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
         ON CONFLICT(card_id) DO UPDATE SET
@@ -216,7 +275,9 @@ def save_card_payload(db: sqlite3.Connection, subscription_id: int, payload: Car
             rarity = excluded.rarity,
             last_synced_at = CURRENT_TIMESTAMP,
             raw_json = excluded.raw_json
-        """,
+        """
+    db.execute(
+        upsert,
         (
             payload.card_id,
             payload.name,

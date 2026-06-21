@@ -390,6 +390,20 @@ ALERT_WEBHOOK_TIMEOUT_SECONDS=10
 
 顶栏点「设置」（`/settings`）即可在网页里直接填写 **PSA Token、pokemontcg.io Key、TCGdex API 地址、集换社开关/地址、提醒 Webhook** 等。保存后写入数据库、**立即生效、无需重启容器**，也不必改 compose。这些值会覆盖环境变量；输入框留空则回退到环境变量/默认值。下面这些环境变量仍然可用，只是“设置”页更方便。
 
+### 用 MySQL 代替 SQLite（可选）
+
+默认数据存在容器里的 SQLite（`/data/app.db`）。如果你想把数据放到自己的 **MySQL** 上，进「设置」页最上方的「数据库」一栏，填连接串：
+
+```text
+mysql://用户名:密码@主机:3306/数据库名
+```
+
+点「测试并保存」——系统会**先测试连接、再自动建表**，成功才切换，**立即生效、无需重启**；失败会原样退回 SQLite 并提示原因。留空再保存即可切回 SQLite。
+
+- 需要 **MySQL 8.0.13+**（用到窗口函数 / CTE / `DEFAULT (expr)`）。建议库用 `utf8mb4`。
+- 连接串**不写进数据库**（否则就循环依赖了），而是存到 `data/instance.json`；也可以用环境变量 `DATABASE_URL` 预先设定。
+- 切到 MySQL 后旧的 SQLite 历史**不会自动迁移**；想保留就先在 SQLite 模式下用「订阅导出 / 价格导出」存一份 CSV。MySQL 模式下「数据库备份」（SQLite 文件）会停用，请用 `mysqldump` 备份。
+
 ### 卡图回退（缺图时）
 
 部分卡片（促销卡、麦当劳系列、部分日文/中文卡）在 TCGdex 上**根本没有图**，这时列表/详情会显示文字占位。系统会自动回退到 [pokemontcg.io](https://pokemontcg.io) 按卡名+编号找图并缓存，无需配置即可工作；填上免费的 `POKEMONTCG_API_KEY`（或在“设置”页填）会更稳定、更不容易超额。
